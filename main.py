@@ -25,35 +25,37 @@ from face_recognition_uni_dubna.CameraStream import CameraStream
 
 media_dir = os.path.join('media', 'test')
 
-cap = CameraStream(
-    cam_ip='10.210.6.152',
-    auth_login='admin',
-    auth_password='admin'
-)
 
-cap1 = CameraStream(
-    cam_ip='10.210.52.7',
-    auth_login='admin',
-    auth_password='admin'
-)
+cam_ips = [
+    '10.210.6.152',
+    '10.210.52.7',
+    # '10.210.52.8',
+    # '10.210.52.6',
+    # '10.210.1.6',
+]
 
-cap.open(
-    save_interval=2000
-)
-time.sleep(3)
-cap.close()
-time.sleep(4)
-cap.open(
-    save_interval=500
-)
-time.sleep(1)
-cap1.open(
-    save_interval=1333
-)
-time.sleep(1)
-cap.close()
-time.sleep(2)
-cap1.close()
+streams = []
+
+for cam_ip in cam_ips:
+    streams.append(
+        CameraStream(
+            cam_ip=cam_ip,
+            auth_login='admin',
+            auth_password='admin',
+            save_dir=media_dir
+        )
+    )
+
+for stream in streams:
+    stream.open(
+        save_interval=5000
+    )
+
+time.sleep(30)
+
+for stream in streams:
+    stream.close()
+
 
 # cap1.Close
 

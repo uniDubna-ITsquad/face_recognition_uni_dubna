@@ -1,6 +1,7 @@
 from threading import Thread, Event
 import time
 import os
+import cv2
 
 class CameraStream:
 
@@ -11,8 +12,9 @@ class CameraStream:
             self._elapsed = {}
 
         def run(self):
-            while not self.stopped.wait(.01):
-                for key, fun in self._elapsed.items():
+            # while not self.stopped.wait(.01):
+            while True:
+                for fun in list(self._elapsed.values()):
                     fun()
                     
         def add_elapsed(self, key, event_handler):
@@ -53,22 +55,22 @@ class CameraStream:
         self.save_dir = save_dir
 
     def open(self, *, save_interval):
-        # self.cam_cap = cv2.VideoCapture(
-        #     f"rtsp://{self.auth_login}:{self.auth_password}@{self.cap_ip}"
-        #     ),
+        self.cam_cap = cv2.VideoCapture(
+            f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
+        )
 
         print(f"start {self.cam_ip}")
         self._add2timer(save_interval)
 
     def close(self):
-        print(f"close {self.cam_ip}")
         self._remove_from_timer()
+        self.cam_cap.release()
+        print(f"closed {self.cam_ip}")
 
 
     def _add2timer(self, save_interval):
         if type(self._timer) != CameraStream._Timer \
            or len(self._timer) == 0:
-            print('in here')
             self._timer_stop_ev = Event()
             self._timer = self._Timer(
                 self._timer_stop_ev
@@ -89,14 +91,17 @@ class CameraStream:
         def _try_save_screen():
             cur_time = int(round(time.time() * 1000))
             diff_time = cur_time - start_time[0]
+            ret, frame = self.cam_cap.read()
             if diff_time >  interval:
-                self._save_screen()
+                self._save_screen(frame)
                 start_time[0] = cur_time
 
         return _try_save_screen
     
-    def _save_screen(self):
-        print(self._get_save_path())
+    def _save_screen(self, frame):
+        _path = self._get_save_path()
+        print(_path)
+        cv2.imwrite(_path , frame)
 
     def _get_save_path(self):
         cur_time_str = time.strftime(
@@ -105,7 +110,7 @@ class CameraStream:
         )
         if self.__dict__['save_dir']:
             return os.path.join(
-                self.save_dir, cur_time_str + '.jpg'
+                self.save_dir, self.cam_ip, cur_time_str + '.jpg'
             )
         else:
             return os.path.join(
