@@ -103,16 +103,24 @@ class CameraStream:
         print(_path)
         cv2.imwrite(_path , frame)
 
-    def _get_save_path(self):
+    def _get_save_file_path(self):
         cur_time_str = time.strftime(
             "%y_%m_%d-%H_%M_%S",
             time.localtime()
         )
+        res_floder_path = None
         if self.__dict__['save_dir']:
-            return os.path.join(
-                self.save_dir, self.cam_ip, cur_time_str + '.jpg'
+            res_floder_path = os.path.join(
+                self.save_dir, self.cam_ip
             )
         else:
-            return os.path.join(
-                'media', self.cam_ip, cur_time_str + '.jpg'
+            res_floder_path = os.path.join(
+                'media', self.cam_ip
             )
+
+        self._check_folder_path(res_floder_path)
+
+        return os.path.join(res_floder_path, cur_time_str + '.jpg')
+
+    def _check_folder_path(folder_path):
+        pass

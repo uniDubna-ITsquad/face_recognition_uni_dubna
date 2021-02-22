@@ -56,31 +56,8 @@ time.sleep(30)
 for stream in streams:
     stream.close()
 
-
 # cap1.Close
 
-# capts = [
-#     # {
-#     # 'ip': '10.210.6.152',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.6.152"),
-#     # },
-#     # {
-#     # 'ip': '10.210.52.7',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.52.7"),
-#     # },
-#     # {
-#     # 'ip': '10.210.52.8',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.52.8"),
-#     # },
-#     # {
-#     # 'ip': '10.210.52.6',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.52.6"),
-#     # },
-#     {
-#     'ip': '10.210.1.6',
-#     'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.1.6"),
-#     },
-# ]
 
 
 # while(True):
