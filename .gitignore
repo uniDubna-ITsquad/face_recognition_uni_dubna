@@ -1,1 +1,3 @@
 linux_env
+media/*
+*__pycache__*
