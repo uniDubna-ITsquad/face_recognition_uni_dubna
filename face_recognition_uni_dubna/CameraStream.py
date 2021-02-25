@@ -55,17 +55,20 @@ class CameraStream:
         self.save_dir = save_dir
 
     def open(self, *, save_interval):
-        self.cam_cap = cv2.VideoCapture(
-            f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
-        )
+        if not __debug__:
+            self.cam_cap = cv2.VideoCapture(
+                f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
+            )
 
         print(f"start {self.cam_ip}")
         self._add2timer(save_interval)
 
     def close(self):
+        print(f"close {self.cam_ip}")
         self._remove_from_timer()
-        self.cam_cap.release()
-        print(f"closed {self.cam_ip}")
+        
+        if not __debug__:
+            self.cam_cap.release()
 
 
     def _add2timer(self, save_interval):
@@ -84,14 +87,18 @@ class CameraStream:
     def _remove_from_timer(self):
         self._timer.remove_elapsed(self)
         if len(self._timer) == 0:
+            print('destroyed')
             self._timer_stop_ev.set()
+            self._timer = None
 
     def _get_save_handler(self, interval):
         start_time = [int(round(time.time() * 1000))]
         def _try_save_screen():
             cur_time = int(round(time.time() * 1000))
             diff_time = cur_time - start_time[0]
-            ret, frame = self.cam_cap.read()
+            frame = None
+            if not __debug__:
+                ret, frame = self.cam_cap.read()
             if diff_time >  interval:
                 self._save_screen(frame)
                 start_time[0] = cur_time
@@ -99,9 +106,10 @@ class CameraStream:
         return _try_save_screen
     
     def _save_screen(self, frame):
-        _path = self._get_save_path()
+        _path = self._get_save_file_path()
         print(_path)
-        cv2.imwrite(_path , frame)
+        if not __debug__:
+            cv2.imwrite(_path , frame)
 
     def _get_save_file_path(self):
         cur_time_str = time.strftime(
@@ -122,5 +130,6 @@ class CameraStream:
 
         return os.path.join(res_floder_path, cur_time_str + '.jpg')
 
-    def _check_folder_path(folder_path):
-        pass
+    def _check_folder_path(self, folder_path):
+        if not os.path.exists(folder_path):
+            os.mkdir("folder_path")

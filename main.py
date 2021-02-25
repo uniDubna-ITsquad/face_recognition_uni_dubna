@@ -23,12 +23,15 @@ from face_recognition_uni_dubna.CameraStream import CameraStream
 #
 # тест
 
+if __debug__:
+    print('Hello from debug')
+
 media_dir = os.path.join('media', 'test')
 
 
 cam_ips = [
     '10.210.6.152',
-    '10.210.52.7',
+    # '10.210.52.7',
     # '10.210.52.8',
     # '10.210.52.6',
     # '10.210.1.6',
@@ -48,13 +51,20 @@ for cam_ip in cam_ips:
 
 for stream in streams:
     stream.open(
-        save_interval=5000
+        save_interval=2000
     )
 
-time.sleep(30)
+if __debug__:
+    time.sleep(10)
+    for stream in streams:
+        stream.close()
 
-for stream in streams:
-    stream.close()
+
+
+# time.sleep(30)
+
+# for stream in streams:
+#     stream.close()
 
 # cap1.Close
 
