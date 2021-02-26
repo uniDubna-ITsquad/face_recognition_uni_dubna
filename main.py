@@ -27,6 +27,7 @@ cam_ips = [
     '10.210.52.8',
     '10.210.52.6',
     '10.210.1.6',
+
 ]
 
 streams = []
@@ -55,9 +56,13 @@ while True:
         for stream in streams:
             stream.close()
         break
-
 # time.sleep(2)
 # streams[0].close()
+
+# time.sleep(30)
+
+# for stream in streams:
+#     stream.close()
 
 # cap1.Close
 
