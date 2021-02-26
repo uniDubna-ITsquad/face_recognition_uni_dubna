@@ -5,6 +5,7 @@ from PIL import Image
 import cv2
 import time
 import os
+import sys
 from face_recognition_uni_dubna.CameraStream import CameraStream
 # from datetime import datetime
 
@@ -19,19 +20,13 @@ from face_recognition_uni_dubna.CameraStream import CameraStream
 # for i, [y0, x1, y1, x0] in enumerate(face_locations):
 #     im4pil.crop((x0, y0, x1, y1)).save(str(i) + '.jpg')
 
-# не робит
-#
-# тест
-
-media_dir = os.path.join('media', 'test')
-
-
+media_dir = os.path.join('media', 'test000')
 cam_ips = [
     '10.210.6.152',
     '10.210.52.7',
-    # '10.210.52.8',
-    # '10.210.52.6',
-    # '10.210.1.6',
+    '10.210.52.8',
+    '10.210.52.6',
+    '10.210.1.6',
 ]
 
 streams = []
@@ -42,46 +37,29 @@ for cam_ip in cam_ips:
             cam_ip=cam_ip,
             auth_login='admin',
             auth_password='admin',
-            save_dir=media_dir
+            save_dir=media_dir,
+            # without rtps and saving screens
+            debug=True
         )
     )
 
 for stream in streams:
     stream.open(
-        save_interval=5000
+        save_interval=1000
     )
 
-time.sleep(30)
+# time.sleep(4)
 
-for stream in streams:
-    stream.close()
+while True:
+    if input() == 'q':
+        for stream in streams:
+            stream.close()
+        break
 
+# time.sleep(2)
+# streams[0].close()
 
 # cap1.Close
-
-# capts = [
-#     # {
-#     # 'ip': '10.210.6.152',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.6.152"),
-#     # },
-#     # {
-#     # 'ip': '10.210.52.7',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.52.7"),
-#     # },
-#     # {
-#     # 'ip': '10.210.52.8',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.52.8"),
-#     # },
-#     # {
-#     # 'ip': '10.210.52.6',
-#     # 'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.52.6"),
-#     # },
-#     {
-#     'ip': '10.210.1.6',
-#     'cap': cv2.VideoCapture("rtsp://admin:admin@10.210.1.6"),
-#     },
-# ]
-
 
 # while(True):
 #     t = time.localtime()
