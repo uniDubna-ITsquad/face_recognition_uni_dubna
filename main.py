@@ -7,6 +7,7 @@ import time
 import os
 import sys
 from face_recognition_uni_dubna.CameraStream import CameraStream
+from face_recognition_uni_dubna.Command import Command
 # from datetime import datetime
 
 
@@ -20,42 +21,53 @@ from face_recognition_uni_dubna.CameraStream import CameraStream
 # for i, [y0, x1, y1, x0] in enumerate(face_locations):
 #     im4pil.crop((x0, y0, x1, y1)).save(str(i) + '.jpg')
 
-media_dir = os.path.join('media', 'test000')
-cam_ips = [
-    '10.210.6.152',
-    '10.210.52.7',
-    '10.210.52.8',
-    '10.210.52.6',
-    '10.210.1.6',
 
-]
 
-streams = []
+## -- Norm cod -- ##
 
-for cam_ip in cam_ips:
-    streams.append(
-        CameraStream(
-            cam_ip=cam_ip,
-            auth_login='admin',
-            auth_password='admin',
-            save_dir=media_dir,
-            # without rtps and saving screens
-            debug=True
-        )
-    )
+# media_dir = os.path.join('media', 'test000')
+# cam_ips = [
+#     '10.210.6.152',
+#     '10.210.52.7',
+#     '10.210.52.8',
+#     '10.210.52.6',
+#     '10.210.1.6',
 
-for stream in streams:
-    stream.open(
-        save_interval=1000
-    )
+# ]
 
-# time.sleep(4)
+# streams = []
 
-while True:
-    if input() == 'q':
-        for stream in streams:
-            stream.close()
-        break
+# for cam_ip in cam_ips:
+#     streams.append(
+#         CameraStream(
+#             cam_ip=cam_ip,
+#             auth_login='admin',
+#             auth_password='admin',
+#             save_dir=media_dir,
+#             # without rtps and saving screens
+#             debug=True
+#         )
+#     )
+
+# for stream in streams:
+#     stream.open(
+#         save_interval=1000
+#     )
+
+# # time.sleep(4)
+
+# while True:
+#     if input() == 'q':
+#         for stream in streams:
+#             stream.close()
+#         break
+
+## -- Norm cod \ - ##
+
+
+Command.exec('connect2db')
+
+
 # time.sleep(2)
 # streams[0].close()
 
