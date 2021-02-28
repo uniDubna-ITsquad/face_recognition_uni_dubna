@@ -1,5 +1,12 @@
 import psycopg2 as psql
+# import numpy as np
+# from psycopg2.extensions import register_adapter, AsIs
 
+
+# def addapt_numpy_array(numpy_array):
+#     return AsIs(tuple(numpy_array))
+
+# register_adapter(np.ndarray, addapt_numpy_array)
 
 def connection_require(func):
     def wrapped(*args, **kwargs):
@@ -36,11 +43,21 @@ class MDBQuery:
         if version < 0.01:
             commands.append(
                 """\
+                CREATE TABLE public.cameras (
+                    ip VARCHAR(255) PRIMARY KEY
+                );
+
                 CREATE TABLE public.processed_screens (
                     id SERIAL PRIMARY KEY,
                     path VARCHAR(255) NOT NULL,
                     date TIMESTAMP NOT NULL,
-                    total_face SMALLINT DEFAULT NULL
+                    total_face SMALLINT DEFAULT NULL,
+                    camera_ip VARCHAR(255) NOT NULL,
+
+                    CONSTRAINT fk_camera_ip
+                        FOREIGN KEY(camera_ip)
+                            REFERENCES cameras(ip)
+                            ON DELETE CASCADE
                 );
 
                 CREATE TABLE public.screens_features (
@@ -56,21 +73,6 @@ class MDBQuery:
 
                 );
 
-                CREATE TABLE public.students (
-                    student_name_id INTEGER PRIMARY KEY,
-                    student_feature_id INTEGER NOT NULL,
-
-                    CONSTRAINT fk_student_name_id
-                        FOREIGN KEY(student_name_id)
-                            REFERENCES processed_screens(id)
-                            ON DELETE CASCADE,
-                    
-                    CONSTRAINT fk_student_feature_id
-                        FOREIGN KEY(student_feature_id)
-                            REFERENCES processed_screens(id)
-                            ON DELETE CASCADE
-                );
-
                 CREATE TABLE public.students_names (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL
@@ -80,6 +82,21 @@ class MDBQuery:
                     id SERIAL PRIMARY KEY,
                     path VARCHAR(255) NOT NULL,
                     feature REAL[] NOT NULL
+                );
+
+                CREATE TABLE public.students (
+                    student_name_id INTEGER PRIMARY KEY,
+                    student_feature_id INTEGER NOT NULL,
+
+                    CONSTRAINT fk_student_name_id
+                        FOREIGN KEY(student_name_id)
+                            REFERENCES students_names(id)
+                            ON DELETE CASCADE,
+                    
+                    CONSTRAINT fk_student_feature_id
+                        FOREIGN KEY(student_feature_id)
+                            REFERENCES students_features(id)
+                            ON DELETE CASCADE
                 );
                 """
             )
@@ -94,8 +111,43 @@ class MDBQuery:
         except (Exception, psql.DatabaseError) as e:
             print('In MDBQuery check_version')
             print(e)
-        n_version = version
+            n_version = version
         return n_version
 
-    # @staticmethod
-    # @connection_require
+    @staticmethod
+    @connection_require
+    def insert_student_with_feature(student_name, im_path, feature_im):
+        cur = MDBQuery.conn.cursor()
+        cur.execute(
+            'INSERT INTO students_names (name) VALUES (%s)',
+            [student_name]
+        )
+        cur.execute(
+            'SELECT id FROM students_names WHERE name=%s',
+            [student_name]
+        )
+        cur_student_name_id = cur.fetchall()
+        if len(cur_student_name_id) != 1:
+            raise Exception('Null or Multipler id for students names')
+        cur_student_name_id = cur_student_name_id[0][0]
+
+        cur.execute(
+            'INSERT INTO students_features (path, feature) VALUES (%s, %s)',
+            [im_path, list(feature_im)]
+        )
+        cur.execute(
+            'SELECT id FROM students_features WHERE path=%s',
+            [im_path]
+        )
+        cur_student_feature_id = cur.fetchall()
+        if len(cur_student_feature_id) != 1:
+            raise Exception('Null or Multipler id for students features')
+        cur_student_feature_id = cur_student_feature_id[0][0]
+    
+        cur.execute(
+            'INSERT INTO students (student_name_id, student_feature_id) VALUES (%s, %s)',
+            [cur_student_name_id, cur_student_feature_id]
+        )
+
+        cur.close()
+        MDBQuery.conn.commit()

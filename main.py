@@ -64,7 +64,10 @@ from face_recognition_uni_dubna.Command import Command
 
 ## -- Norm cod \ - ##
 
-Command.exec('connect2db')
+Command.connect2db()
+
+
+# Command.load_student_features_from_dir(os.path.join('media', 'students'))
 
 
 # time.sleep(2)
