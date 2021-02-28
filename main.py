@@ -64,7 +64,6 @@ from face_recognition_uni_dubna.Command import Command
 
 ## -- Norm cod \ - ##
 
-
 Command.exec('connect2db')
 
 

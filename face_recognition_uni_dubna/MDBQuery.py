@@ -16,6 +16,7 @@ class MDBQuery:
 
     @staticmethod
     def connect2db(*, dbname, user, password, host):
+        print(MDBQuery.is_connected)
         if MDBQuery.is_connected:
             raise Exception('Already connected')
         conn = psql.connect(
@@ -25,7 +26,18 @@ class MDBQuery:
             host=host
         )
 
+        MDBQuery.cur = conn.cursor()
+
         MDBQuery.is_connected = True
+
+    @staticmethod
+    @connection_require
+    def check_version(version):
+        if version < 0.01:
+
+            
+
+            version = 0.01
 
     # @staticmethod
     # @connection_require
