@@ -19,6 +19,8 @@ class Command:
             )
 
             n_db_version = MDBQuery.check_version(float(conf_db['Version']))
+            if n_db_version != float(conf_db['Version']):
+                Config.set_db_version(n_db_version)
 
 
 _config_file_name = 'config.cfg'
@@ -56,3 +58,17 @@ class Config:
         config = configparser.ConfigParser()
         config.read(_config_file_name)
         return config[name]
+
+    @staticmethod
+    def set_db_version(version):
+        try:
+            float(version)
+        except TypeError as e:
+            raise Exception('Database version must be a number')
+        config = configparser.ConfigParser()
+        config.read(_config_file_name)
+
+        config.set('DATABASE', 'Version', str(version))
+
+        with open(_config_file_name, 'w') as configfile:
+            config.write(configfile)
