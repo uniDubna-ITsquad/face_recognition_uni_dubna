@@ -180,7 +180,7 @@ class MDBQuery:
         if len(cur_processed_screens_id) != 1:
             raise Exception('path of screen already has been add to processing')
         cur_processed_screens_id = cur_processed_screens_id[0][0]
-        print(cur_processed_screens_id)
+        # print(cur_processed_screens_id)
 
         zip_face_parameters = zip(face_parameters_im['locations'], face_parameters_im['features'])
         for loc, feat in zip_face_parameters:
@@ -191,5 +191,57 @@ class MDBQuery:
             [cur_processed_screens_id, list(loc), list(feat)]
         )
         
+        cur.close()
+        MDBQuery.conn.commit()
+
+    @staticmethod
+    @connection_require
+    def get_students_id_and_features():
+        command = """\
+SELECT s.student_name_id, sf.feature
+    FROM public.students_features AS sf, public.students AS s
+    WHERE  sf.id = s.student_feature_id;
+        """
+        cur = MDBQuery.conn.cursor()
+        cur.execute(command)
+
+        data = cur.fetchall()
+        cur.close()
+        
+        features = [el[1] for el in data]
+        ids = [el[0] for el in data]
+
+        return {'ids': ids, 'features': features}
+
+    @staticmethod
+    @connection_require
+    def get_unprocessed_screens_faces():
+        command = """\
+SELECT id, face_feature
+    FROM public.screens_features
+    WHERE  looks_like_student_id IS NULL;
+        """
+        cur = MDBQuery.conn.cursor()
+        cur.execute(command)
+
+        data = cur.fetchall()
+        cur.close()
+
+        features = [el[1] for el in data]
+        ids = [el[0] for el in data]
+
+        return {'ids': ids, 'features': features}
+
+    @staticmethod
+    @connection_require
+    def update_screens_face4match_student(screen_face_id, student_id):
+        command = f"""\
+UPDATE public.screens_features
+	SET looks_like_student_id={student_id}
+	WHERE id={screen_face_id};
+        """
+        cur = MDBQuery.conn.cursor()
+        cur.execute(command)
+
         cur.close()
         MDBQuery.conn.commit()

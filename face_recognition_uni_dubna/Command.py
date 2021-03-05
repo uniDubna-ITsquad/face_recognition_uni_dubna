@@ -47,6 +47,25 @@ class Command:
 
 
     @staticmethod
+    def test():
+        students_data = MDBQuery.get_students_id_and_features()
+        screens_faces_data = MDBQuery.get_unprocessed_screens_faces()
+        
+        MFaceRecognition.set_student_data(students_data)
+
+        zip_screens_faces = zip(
+            screens_faces_data['ids'],
+            screens_faces_data['features']
+        )
+
+        for screen_face_id, screen_face_feature in zip_screens_faces:
+            student_id = MFaceRecognition.test(screen_face_feature)
+            
+            MDBQuery.update_screens_face4match_student(screen_face_id, student_id)
+       # MFaceRecognition.compare()
+
+
+    @staticmethod
     def _get_correct_pictures_from_dir(folder_path):
         dir_files_pathes = os.listdir(folder_path)
         # progress_bar = Bar('Getting_correct_images_from_dir', max=len(dir_files_pathes))

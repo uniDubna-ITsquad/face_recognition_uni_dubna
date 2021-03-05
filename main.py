@@ -68,7 +68,7 @@ Command.connect2db()
 
 # Command.load_student_features_from_dir(os.path.join('media', 'us'))
 # Command.load_screens_from_dir(os.path.join('media', 'test_screens'))
-
+Command.test()
 
 
 
