@@ -1,10 +1,14 @@
 import configparser
 import os
+import time
 from face_recognition_uni_dubna.MDBQuery import MDBQuery
 from face_recognition_uni_dubna.MFaceRecognition import MFaceRecognition
+from face_recognition_uni_dubna.CameraStream import CameraStream
+import cv2
 import imghdr
-from progress.bar import Bar
 
+class Object(object):
+    pass
 
 class Command:
     def __init__(self):
@@ -68,14 +72,73 @@ class Command:
     @staticmethod
     def _get_correct_pictures_from_dir(folder_path):
         dir_files_pathes = os.listdir(folder_path)
-        # progress_bar = Bar('Getting_correct_images_from_dir', max=len(dir_files_pathes))
         for file_name in os.listdir(folder_path):
-            # progress_bar.next()
             full_file_name = os.path.join(folder_path, file_name)
             if imghdr.what(full_file_name) != None:
                 yield full_file_name
 
+##### Camera Commands #####
+
+    @staticmethod
+    def get_cameras_connector(save_dir):
+        def connector(*args, **kwargs):
+            handler = lambda frame: \
+                Command._handler_of_taked_frames(frame, save_dir)
+            cam = CameraStream(
+                *args, **kwargs,
+                handler_of_taked_frames=handler)
+            obj = Object()
+            setattr(
+                obj, 'open',
+                lambda interval: \
+                    cam.open(save_interval=interval)
+            )
+            setattr(
+                obj, 'close',
+                lambda interval: cam.close()
+            )
+            return obj
+
+        return connector
+
+    @staticmethod
+    def _handler_of_taked_frames(frame, save_dir):
+        n_frame_path, time = Command._get_save_file_path_by_cur_time()
+        n_frame_path = os.path.join(save_dir, n_frame_path)
+        Command._check_folder_path(os.path.split(n_frame_path)[0])
+        # cv2.imwrite(n_frame_path, frame)
+
+
+        # print(a)
+
+    @staticmethod
+    def _check_folder_path(folder_path):
+        print(folder_path)
+        return
+        if os.path.exists(folder_path): 
+            return
+        dirs = os.path.split(folder_path)
+        for i in range(1, len(dirs) + 1):
+            cur_folder_path = os.path.join(*dirs[:i])
+            if not os.path.exists(cur_folder_path):
+                os.mkdir(cur_folder_path)
+
+    @staticmethod
+    def _get_save_file_path_by_cur_time():
+        cur_time = time.localtime()
+        cur_time_str = time.strftime(
+            "%y_%m_%d-%H_%M_%S",
+            cur_time
+        )
+
+        [file_dir, file_name] = cur_time_str.split('-')
         
+        res_path = os.path.join(
+            *file_dir.split('_'),
+            file_name + '.jpg'
+        )
+
+        return (res_path, cur_time)
 
 _config_file_name = 'config.cfg'
 
@@ -84,7 +147,7 @@ class Config:
         raise Exception('you cannot create an object of this class')
 
     @staticmethod
-    def init_config_db(*, user, password, host='127.0.0.1', port='5432', db_name):
+    def init_config_db(*, user, password, db_name, host='127.0.0.1', port='5432'):
         Command._try_create_conf_file()
         config = configparser.ConfigParser()
         config.read(_config_file_name)

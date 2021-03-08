@@ -67,21 +67,21 @@ class CameraStream:
     def _thread_controller(self, value):
         type(self)._thread_controller = value
 
-    def __init__(self, *, cam_ip, save_dir=None, auth_login='admin', auth_password='admin', debug=False):
+    def __init__(self, *, cam_ip, handler_of_taked_frames,
+                # save_dir=None,
+                auth_login='admin', auth_password='admin', debug=False):
         self.cam_ip = cam_ip
         self.auth_login = auth_login
         self.auth_password = auth_password
-        self.save_dir = save_dir
+        # self.save_dir = save_dir
         self.is_debug = debug
+        self.handler_of_taked_frames = handler_of_taked_frames
         self._is_tread_alive = False
+        self._test_open()
 
     def open(self, *, save_interval):
         if not self.is_debug:
-            self.cam_cap = cv2.VideoCapture(
-                f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
-            )
-            self.cam_cap.set(cv2.CAP_PROP_POS_AVI_RATIO,1)
-
+            self._open_rtsp()
         self._add2thread(save_interval)
         self._is_tread_alive = True
         print(f"start {self.cam_ip}")
@@ -91,9 +91,24 @@ class CameraStream:
             raise Exception("cannot close a stream that was not open")
         self._remove_from_timer()
         if not self.is_debug:
-            self.cam_cap.release()
+            self._close_rtsp()
         print(f"close {self.cam_ip}")
 
+    def _test_open(self):
+        if not self.is_debug:
+            self._open_rtsp()
+            self._close_rtsp()
+
+    def _open_rtsp(self):
+        print('open')
+        self.cam_cap = cv2.VideoCapture(
+            f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
+        )
+        self.cam_cap.set(cv2.CAP_PROP_POS_AVI_RATIO,1)
+
+    def _close_rtsp(self):
+        self.cam_cap.release()
+        del self.cam_cap
 
     def _add2thread(self, save_interval):
         if type(self._thread_controller) != CameraStream._ThreadController \
@@ -123,12 +138,14 @@ class CameraStream:
                 ret, frame = self.cam_cap.read()
             # if diff_time > interval / 1000:
             if diff_time > interval:
-                if not self.is_debug and not ret:
+                if not self.is_debug and not ret and frame == None:
                     print("Here ----------------------------------------------\n" * 4)
                     print(ret, frame)
                     print("Here ----------------------------------------------\n" * 4)
-                    return _try_save_screen()
-                self._save_screen(frame)
+                    # return _try_save_screen()
+                    return None
+                # self._save_screen(frame)
+                self.handler_of_taked_frames(frame)
                 start_time[0] += interval
 
         return _try_save_screen

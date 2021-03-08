@@ -66,9 +66,23 @@ from face_recognition_uni_dubna.Command import Command
 
 Command.connect2db()
 
+media_dir = os.path.join('media', 'test000')
+cam_ips = [
+    '10.210.6.152',
+    '10.210.52.7',
+    '10.210.52.8',
+    '10.210.52.6',
+    '10.210.1.6',
+]
+
+cameras_connector = Command.get_cameras_connector(media_dir)
+
+cameras_connector(cam_ip=cam_ips[0], debug=True).open(1500)
+
+
 # Command.load_student_features_from_dir(os.path.join('media', 'us'))
 # Command.load_screens_from_dir(os.path.join('media', 'test_screens'))
-Command.test()
+# Command.test()
 
 
 
