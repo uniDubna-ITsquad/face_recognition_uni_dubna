@@ -159,7 +159,7 @@ class MDBQuery:
     
     @staticmethod
     @connection_require
-    def commit_screen(screen_path, face_parameters_im):
+    def commit_screen(screen_path, face_parameters_im, cam_ip='test'):
         if len(face_parameters_im['locations']) != len(face_parameters_im['features']):
             raise Exception("can't commit screen len locations != len features")
         total_faces = len(face_parameters_im['locations'])
@@ -168,8 +168,8 @@ class MDBQuery:
         cur.execute(
             "INSERT INTO processed_screens \
                 (path, date, total_face, camera_ip) \
-            VALUES (%s, %s, %s, 'test')",
-            [screen_path, date_now, total_faces]
+            VALUES (%s, %s, %s, %s)",
+            [screen_path, date_now, total_faces, cam_ip]
         )
 
         cur.execute(

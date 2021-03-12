@@ -1,5 +1,6 @@
 linux_env
 media/*
 *__pycache__*
+config.json
 config.cfg
 test.py

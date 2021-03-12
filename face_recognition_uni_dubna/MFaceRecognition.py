@@ -1,5 +1,8 @@
 import face_recognition as face_rc
 import numpy as np
+from threading import Thread, Event
+import time
+
 
 
 def students_data_require(func):
@@ -11,7 +14,10 @@ def students_data_require(func):
 
 
 class MFaceRecognition:
-
+     
+    class _ThreadController():
+        pass
+        
     _students_data = None
 
 

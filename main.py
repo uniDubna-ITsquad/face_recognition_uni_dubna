@@ -1,13 +1,8 @@
 # rtsp://freja.hiof.no:1935/rtplive/definst/hessdalen03.stream
 
-import face_recognition
-from PIL import Image
-import cv2
-import time
+from face_recognition_uni_dubna.MDispatcher import MDispatcher
 import os
-import sys
-from face_recognition_uni_dubna.CameraStream import CameraStream
-from face_recognition_uni_dubna.Command import Command
+from tabulate import tabulate
 # from datetime import datetime
 
 
@@ -25,7 +20,7 @@ from face_recognition_uni_dubna.Command import Command
 
 ## -- Norm cod -- ##
 
-# media_dir = os.path.join('media', 'test000')
+media_dir = os.path.join('media', 'test000')
 # cam_ips = [
 #     '10.210.6.152',
 #     '10.210.52.7',
@@ -64,20 +59,87 @@ from face_recognition_uni_dubna.Command import Command
 
 ## -- Norm cod \ - ##
 
-Command.connect2db()
+# MDispatcher.connect2db()
 
-media_dir = os.path.join('media', 'test000')
-cam_ips = [
-    '10.210.6.152',
-    '10.210.52.7',
-    '10.210.52.8',
-    '10.210.52.6',
-    '10.210.1.6',
-]
+def print_cameras_list(cam_list):
+    table_cameras = tabulate(
+        cam_list,
+        headers=['id', 'ip', 'is_alive']
+    )
+    print(table_cameras)
 
-cameras_connector = Command.get_cameras_connector(media_dir)
 
-cameras_connector(cam_ip=cam_ips[0], debug=True).open(1500)
+while (True):
+    cmd = input('Command:\n')
+    if cmd == 'q':
+        MDispatcher.close_all_cameras()
+        break
+    elif cmd == 'db init':
+        db_user = input('DB user:\n')
+        db_password = input('DB password:\n')
+        db_name = input('DB name:\n')
+        MDispatcher.db_init(db_user, db_password, db_name)
+    elif cmd == 'db connect':
+        MDispatcher.connect2db()
+    elif cmd == 'camera create':
+        cam_ip = input('Camera ip:\n')
+        cam_auth_login = input('Camera auth login:\n')
+        cam_auth_password = input('Camera auth password:\n')
+        MDispatcher.add_cam_in_conf(cam_ip, cam_auth_login, cam_auth_password)
+    elif cmd == 'camera remove':
+        cameras_list = MDispatcher.get_cameras_list()
+        print_cameras_list(cameras_list)
+        cam_choise = input('Which one to delete?:\n')
+        MDispatcher.del_cam_from_config(cam_choise)
+    elif cmd == 'camera list':
+        cameras_list = MDispatcher.get_cameras_list()
+        print_cameras_list(cameras_list)
+    elif cmd == 'camera start':
+        cameras_list = MDispatcher.get_cameras_list()
+        print_cameras_list(cameras_list)
+        cam_choise = input('Which one to delete?:\n')
+        interval = input('What interval?:\n')
+        if interval.isdigit():
+            interval = int(interval)
+        else:
+            print('E: Interval is not digit!')
+        MDispatcher.start_cam_with_interval(cam_choise, interval, media_dir)
+    elif cmd == 'camera start all':
+        cameras_list = MDispatcher.get_cameras_list()
+        print_cameras_list(cameras_list)
+        interval = input('What interval?:\n')
+        if interval.isdigit():
+            interval = int(interval)
+        else:
+            print('E: Interval is not digit!')
+        MDispatcher.start_all_cam_with_interval(interval, media_dir)
+    elif cmd == 'camera close':
+        cameras_list = MDispatcher.get_cameras_list()
+        print_cameras_list(cameras_list)
+        cam_choise = input('Which one to close?:\n')
+        MDispatcher.close_cam(cam_choise)
+    elif cmd == 'camera close all':
+        MDispatcher.close_all_cameras()
+
+
+        
+
+print('bb')
+
+# MDispatcher.add_cam_in_conf('10.210.52.7', 'admin', 'admin')
+
+# media_dir = os.path.join('media', 'test000')
+# cam_ips = [
+#     '10.210.6.152',
+#     '10.210.52.7',
+#     '10.210.52.8',
+#     '10.210.52.6',
+#     '10.210.1.6',
+# ]
+
+# cameras_connector = MDispatcher.get_cameras_connector(media_dir)
+
+# cameras_connector(cam_ip=cam_ips[0], debug=True).open(1500)
 
 
 # Command.load_student_features_from_dir(os.path.join('media', 'us'))

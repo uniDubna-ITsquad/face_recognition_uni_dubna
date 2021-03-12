@@ -1,64 +1,13 @@
-from threading import Thread, Event
+
 import time
 import os
 import cv2
 import sys
+from face_recognition_uni_dubna.MThreading import ThreadControllerLimitedElapsed
 
 class CameraStream:
     
-    class _ThreadController():
-        MAX_ELAPSED = 2
-        class _Thread(Thread):
-            def __init__(self, stop_event):
-                Thread.__init__(self)
-                self.stop_event = stop_event
-                self.elapsed = {}
-
-            def run(self):
-                while not self.stop_event.is_set():
-                    for fun in list(self.elapsed.values()):
-                        fun()
-
-        def __init__(self):
-            self._elapsed = {}
-            self._threads = {}
-                    
-        def add_elapsed(self, key, event_handler):
-            if not(key in self._elapsed):
-                thread = self._get_available_thread()
-                self._elapsed[key] = thread
-                thread.elapsed[key] = event_handler
-            else:
-                raise Exception('already have handler')
-
-        def remove_elapsed(self, key):
-            if (key in self._elapsed):
-                thread = self._elapsed[key]
-                del thread.elapsed[key]
-                if len(thread.elapsed) == 0:
-                    print('Destroy thread')
-                    self._threads[thread].set()
-                    del self._threads[thread]
-            else:
-                raise Exception("no handler exists")
-
-        def _get_available_thread(self):
-            for thread in self._threads.keys():
-                if len(thread.elapsed) < self.MAX_ELAPSED:
-                    return thread
-            return self._get_new_thread()
-        
-        def _get_new_thread(self):
-            print('Start new thread')
-            n_stop_event = Event()
-            n_thread = self._Thread(n_stop_event)
-            self._threads[n_thread] = n_stop_event
-            n_thread.start()
-            return n_thread
-
-        def __len__(self):
-            return len(self._elapsed)
-        
+       
     _thread_controller = None
     @property
     def _thread_controller(self):
@@ -89,10 +38,12 @@ class CameraStream:
     def close(self):
         if not self._is_tread_alive:
             raise Exception("cannot close a stream that was not open")
+        print(f"close {self.cam_ip}")
         self._remove_from_timer()
         if not self.is_debug:
             self._close_rtsp()
-        print(f"close {self.cam_ip}")
+
+        self._is_tread_alive = False
 
     def _test_open(self):
         if not self.is_debug:
@@ -111,9 +62,9 @@ class CameraStream:
         del self.cam_cap
 
     def _add2thread(self, save_interval):
-        if type(self._thread_controller) != CameraStream._ThreadController \
+        if type(self._thread_controller) != ThreadControllerLimitedElapsed \
            or len(self._thread_controller) == 0:
-            self._thread_controller = self._ThreadController()
+            self._thread_controller = ThreadControllerLimitedElapsed()
         
         self._thread_controller.add_elapsed(
             self,
