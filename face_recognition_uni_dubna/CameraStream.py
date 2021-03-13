@@ -96,7 +96,7 @@ class CameraStream:
                     # return _try_save_screen()
                     return None
                 # self._save_screen(frame)
-                self.handler_of_taked_frames(frame)
+                self.handler_of_taked_frames(frame, self.cam_ip)
                 start_time[0] += interval
 
         return _try_save_screen

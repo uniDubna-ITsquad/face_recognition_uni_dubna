@@ -13,7 +13,7 @@ class MConfig:
     @staticmethod
     def init_config_db(*, user, password, db_name, host='127.0.0.1', port='5432'):
         config = MConfig._get_conf_dict()
-        if 'DATABASE' in config:
+        if 'version' in config['DATABASE']:
             raise Exception('DATABASE aready in config')
         config['DATABASE'] = {
             'version': '0',
@@ -23,19 +23,8 @@ class MConfig:
             'port': port,
             'database': db_name,
         }
-        with open(_config_file_name, 'w') as outfile:
-            json.dump(config, outfile)
-    
-    @staticmethod
-    def _try_create_conf_file():
-        if not os.path.exists(_config_file_name):
-            with open(_config_file_name, 'w') as json_file:
-                json.dump({}, json_file)
 
-
-    @staticmethod
-    def get_by_name(name):
-        return MConfig._get_conf_dict()[name]
+        MConfig._save_config(config)
 
     @staticmethod
     def set_db_version(version):
@@ -48,8 +37,7 @@ class MConfig:
 
         config.set('DATABASE', 'Version', str(version))
 
-        with open(_config_file_name, 'w') as configfile:
-            config.write(configfile)
+        MConfig._save_config(config)
 
     @staticmethod
     def check_for_existence_cam(cam_ip, cam_auth_login, cam_auth_password):
@@ -58,9 +46,6 @@ class MConfig:
     @staticmethod
     def add_camera(cam_ip, cam_auth_login, cam_auth_password):
         config = MConfig._get_conf_dict()
-        
-        if not 'CAMERAS' in config:
-            config['CAMERAS'] = []
 
         finded_cam_conf = MConfig._check_camera_by_ip_is_empty(cam_ip)
         if not finded_cam_conf:
@@ -120,9 +105,6 @@ class MConfig:
     def get_camera_by_ip(cam_ip):
         config = MConfig._get_conf_dict()
 
-        if not 'CAMERAS' in config:
-            config['CAMERAS'] = {}
-
         for conf_cam in config['CAMERAS']:
             if cam_ip == conf_cam['cam_ip']:
                 return conf_cam
@@ -131,9 +113,6 @@ class MConfig:
     @staticmethod
     def get_camera_by_id(cam_id):
         config = MConfig._get_conf_dict()
-
-        if not 'CAMERAS' in config:
-            config['CAMERAS'] = {}
 
         if len(config['CAMERAS']) <= cam_id:
             raise Exception('Camera id out of range')
@@ -144,14 +123,33 @@ class MConfig:
     def _check_camera_by_ip_is_empty(cam_ip):
         config = MConfig._get_conf_dict()
 
-        if not 'CAMERAS' in config:
-            config['CAMERAS'] = {}
 
         for conf_cam in config['CAMERAS']:
             if cam_ip == conf_cam['cam_ip']:
                 return False
         return True
 
+    @staticmethod
+    def get_by_name(name):
+        return MConfig._get_conf_dict()[name]
+
+    @staticmethod
+    def _get_or_create_by_name(name):
+        config = MConfig._get_conf_dict()
+
+        if not name in config:
+            config[name] = {}
+
+    
+    @staticmethod
+    def _try_create_conf_file():
+        if not os.path.exists(_config_file_name):
+            config = {
+                "DATABASE": {},
+                "CAMERAS": []
+            }
+            with open(_config_file_name, 'w') as json_file:
+                json.dump(config, json_file)
 
     @staticmethod
     def _get_conf_dict():

@@ -1,8 +1,10 @@
 # rtsp://freja.hiof.no:1935/rtplive/definst/hessdalen03.stream
 
 from face_recognition_uni_dubna.MDispatcher import MDispatcher
+from face_recognition_uni_dubna.MThreading import ThreadSemaphore
 import os
 from tabulate import tabulate
+from time import sleep
 # from datetime import datetime
 
 
@@ -61,6 +63,12 @@ media_dir = os.path.join('media', 'test000')
 
 # MDispatcher.connect2db()
 
+def fun(name, *, slp):
+    print('start', name)
+    sleep(slp)
+    print('close', name)
+
+
 def print_cameras_list(cam_list):
     table_cameras = tabulate(
         cam_list,
@@ -68,11 +76,14 @@ def print_cameras_list(cam_list):
     )
     print(table_cameras)
 
+# tt = ThreadSemaphore(2)
 
 while (True):
     cmd = input('Command:\n')
+    # try:
     if cmd == 'q':
         MDispatcher.close_all_cameras()
+        MDispatcher.stop_new_screens_faces_handler()
         break
     elif cmd == 'db init':
         db_user = input('DB user:\n')
@@ -89,21 +100,21 @@ while (True):
     elif cmd == 'camera remove':
         cameras_list = MDispatcher.get_cameras_list()
         print_cameras_list(cameras_list)
-        cam_choise = input('Which one to delete?:\n')
-        MDispatcher.del_cam_from_config(cam_choise)
+        cam_choice = input('Which one to delete?:\n')
+        MDispatcher.del_cam_from_config(cam_choice)
     elif cmd == 'camera list':
         cameras_list = MDispatcher.get_cameras_list()
         print_cameras_list(cameras_list)
     elif cmd == 'camera start':
         cameras_list = MDispatcher.get_cameras_list()
         print_cameras_list(cameras_list)
-        cam_choise = input('Which one to delete?:\n')
+        cam_choice = input('Which one to delete?:\n')
         interval = input('What interval?:\n')
         if interval.isdigit():
             interval = int(interval)
         else:
             print('E: Interval is not digit!')
-        MDispatcher.start_cam_with_interval(cam_choise, interval, media_dir)
+        MDispatcher.start_cam_with_interval(cam_choice, interval, media_dir)
     elif cmd == 'camera start all':
         cameras_list = MDispatcher.get_cameras_list()
         print_cameras_list(cameras_list)
@@ -116,10 +127,27 @@ while (True):
     elif cmd == 'camera close':
         cameras_list = MDispatcher.get_cameras_list()
         print_cameras_list(cameras_list)
-        cam_choise = input('Which one to close?:\n')
-        MDispatcher.close_cam(cam_choise)
+        cam_choice = input('Which one to close?:\n')
+        MDispatcher.close_cam(cam_choice)
     elif cmd == 'camera close all':
         MDispatcher.close_all_cameras()
+    elif cmd == 'dispatcher start new screens faces handler':
+        MDispatcher.start_new_screens_faces_handler()
+
+        
+##### XD #####
+    # elif cmd == 'test':
+    #     tt.add_to_queue(fun = fun, args = ('test0', ), kwargs = {'slp' : 1})
+    #     tt.add_to_queue(fun = fun, args = ('test1', ), kwargs = {'slp' : 2})
+    #     tt.add_to_queue(fun = fun, args = ('test2', ), kwargs = {'slp' : 3})
+    #     tt.add_to_queue(fun = fun, args = ('test3', ), kwargs = {'slp' : 4})
+        
+
+    # except:
+    #     print(e)
+    #     MDispatcher.close_all_cameras()
+    #     break
+
 
 
         
@@ -157,74 +185,3 @@ print('bb')
 #     stream.close()
 
 # cap1.Close
-
-# while(True):
-#     t = time.localtime()
-#     current_time = time.strftime("%y_%m_%d-%H_%M_%S", t)
-#     print(current_time)
-#     for dict_cap in capts:
-#         [cap_ip, cap] = (dict_cap['ip'], dict_cap['cap'])
-
-#         # print(cap.isOpened())
-
-#         ret, frame = cap.read()
-#         # if(not frame):
-#         #     continue
-
-#         im = Image.fromarray(frame)
-
-#         im_file_name = current_time + '.jpg'
-#         save_path = os.path.join(media_dir, cap_ip, im_file_name)
-
-
-#         # cv2.imshow('frame', frame)
-
-#         # try:
-#         #     im.save(os.path.join(media_dir, cap_ip, im_file_name))
-#         # except OSError as e:
-#         #     os.mkdir(os.path.join(media_dir, cap_ip))
-#         #     im.save(os.path.join(media_dir, cap_ip, im_file_name))
-#         try:
-#             cv2.imwrite(save_path, frame)   
-#         except OSError as e:
-#             os.mkdir(os.path.join(media_dir, cap_ip))
-#             cv2.imwrite(save_path, frame)   
-#         print(save_path)
-
-#     if cv2.waitKey(1000) & 0xFF == ord('q'):
-#         break
-#     # time.sleep(15)
-
-#     # cv2.imshow('frame', frame)
-#     # if cv2.waitKey(20) & 0xFF == ord('q'):
-#     #     break
-
-
-# start_time = int(round(time.time()))
-# cap = capts[0]['cap']
-# while(cap.isOpened()):
-#     ret, frame = cap.read()
-#     # cv2.imshow('frame', frame)
-#     cur_time_in_sec = int(round(time.time()))
-#     print(cur_time_in_sec - start_time)
-#     print(capts[0]['last_time'] + 5)
-#     if cur_time_in_sec - start_time > capts[0]['last_time'] + 5:
-#         t = time.localtime()
-#         current_time = time.strftime("%y_%m_%d-%H_%M_%S", t)
-#         save_path = os.path.join(
-#             media_dir, capts[0]['ip'], current_time + '.jpg'
-#         )
-#         cv2.imwrite(save_path, frame)
-#         capts[0]['last_time'] = cur_time_in_sec - start_time
-
-# # view
-# # cap = capts[4]['cap']
-# # while(cap.isOpened()):
-# #     ret, frame = cap.read()
-# #     cv2.imshow('frame', frame)
-# #     if cv2.waitKey(20) & 0xFF == ord('q'):
-# #         break
-
-# for dict_cap in capts:
-#     dict_cap['cap'].release()
-# cv2.destroyAllWindows()

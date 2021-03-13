@@ -2,6 +2,7 @@ import psycopg2 as psql
 
 from datetime import datetime, timezone
 import time
+from time import mktime
 
 # import numpy as np
 # from psycopg2.extensions import register_adapter, AsIs
@@ -159,17 +160,18 @@ class MDBQuery:
     
     @staticmethod
     @connection_require
-    def commit_screen(screen_path, face_parameters_im, cam_ip='test'):
+    def commit_screen(*, screen_path, frame_face_parameters, time = None, cam_ip = 'test'):
         if len(face_parameters_im['locations']) != len(face_parameters_im['features']):
             raise Exception("can't commit screen len locations != len features")
         total_faces = len(face_parameters_im['locations'])
-        date_now = datetime.now(timezone.utc)
+        date_now = time if time != None \
+              else datetime.now(timezone.utc)
         cur = MDBQuery.conn.cursor()
         cur.execute(
             "INSERT INTO processed_screens \
-                (path, date, total_face, camera_ip) \
+                (camera_ip, path, date, total_face) \
             VALUES (%s, %s, %s, %s)",
-            [screen_path, date_now, total_faces, cam_ip]
+            [cam_ip, screen_path, date_now, total_faces]
         )
 
         cur.execute(

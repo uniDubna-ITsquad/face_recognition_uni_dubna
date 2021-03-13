@@ -1,12 +1,34 @@
-from threading import Thread, Event
+from threading import Thread, Event, Semaphore, BoundedSemaphore
 import time
 import sys
+
+class StoppableLoopedThread(Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self, target, sleep_time, *args, **kwargs):
+        super(StoppableLoopedThread, self).__init__(*args, **kwargs)
+        self._stop_event = Event()
+        self.target = target
+        self.sleep_time = sleep_time
+
+    def run(self):
+        while not self._stop_event.is_set():
+            self.target()
+            time.sleep(self.sleep_time)
+        
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
 
 class ThreadControllerLimitedElapsed():
         MAX_ELAPSED = 2
         class _Thread(Thread):
-            def __init__(self, stop_event):
-                Thread.__init__(self)
+            def __init__(self, stop_event, *args, **kwargs):
+                super(_Thread, self).__init__(*args, **kwargs)
                 self.stop_event = stop_event
                 self.elapsed = {}
 
@@ -55,3 +77,25 @@ class ThreadControllerLimitedElapsed():
         def __len__(self):
             return len(self._elapsed)
      
+class ThreadSemaphore:
+    def __init__(self, lim_handlers):
+        self.bounded_semaphore = BoundedSemaphore(lim_handlers)
+
+    def add_to_queue(self,* , fun, args=None, kwargs=None):
+        Thread(target=self._run, args=(fun, args, kwargs)).start()
+
+    def _run(self, fun, args=None, kwargs=None):
+        self.bounded_semaphore.acquire()
+        # print('args', *args)
+        # print('kwargs', **kwargs)
+        try:
+            if args == None and kwargs == None:
+                fun()
+            elif args == None and kwargs != None:
+                fun(**kwargs)
+            elif args != None and kwargs == None:
+                fun(*args)
+            elif args != None and kwargs != None:
+                fun(*args, **kwargs)
+        finally:
+            self.bounded_semaphore.release()

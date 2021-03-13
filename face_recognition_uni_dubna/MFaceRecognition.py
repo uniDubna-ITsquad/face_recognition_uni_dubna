@@ -54,13 +54,16 @@ class MFaceRecognition:
 
     @staticmethod
     def set_student_data(value):
-        value['features'] = np.array(value['features'])
-        value['ids'] = np.array(value['ids'])
-        MFaceRecognition._students_data = value
+        if value == None:
+            MFaceRecognition._students_data = value
+        else:
+            value['features'] = np.array(value['features'])
+            value['ids'] = np.array(value['ids'])
+            MFaceRecognition._students_data = value
 
     @staticmethod
     @students_data_require
-    def test(feature):
+    def recognize_face(feature):
         res_match = face_rc.compare_faces(
             MFaceRecognition._students_data['features'],
             feature
