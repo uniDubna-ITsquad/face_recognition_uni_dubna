@@ -55,7 +55,7 @@ class CameraStream:
         self.cam_cap = cv2.VideoCapture(
             f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
         )
-        self.cam_cap.set(cv2.CAP_PROP_POS_AVI_RATIO,1)
+        # self.cam_cap.set(cv2.CAP_PROP_POS_AVI_RATIO,1)
 
     def _close_rtsp(self):
         self.cam_cap.release()
@@ -97,6 +97,7 @@ class CameraStream:
                     return None
                 # self._save_screen(frame)
                 self.handler_of_taked_frames(frame, self.cam_ip)
+
                 start_time[0] += interval
 
         return _try_save_screen
@@ -138,3 +139,15 @@ class CameraStream:
     def _get_duration_of_capture(self):
         return int(self.cam_cap.get(cv2.CAP_PROP_POS_FRAMES)) \
              / int(self.cam_cap.get(cv2.CAP_PROP_FPS))
+
+    @staticmethod         
+    def is_connectable_cam_params(*, cam_ip, auth_login='admin', auth_password='admin'):
+        try:
+            self.cam_cap = cv2.VideoCapture(
+                f"rtsp://{auth_login}:{auth_password}@{cam_ip}"
+            )
+        except:
+            return False
+        self.cam_cap.release()
+
+        return True

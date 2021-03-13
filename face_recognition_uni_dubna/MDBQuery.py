@@ -161,9 +161,9 @@ class MDBQuery:
     @staticmethod
     @connection_require
     def commit_screen(*, screen_path, frame_face_parameters, time = None, cam_ip = 'test'):
-        if len(face_parameters_im['locations']) != len(face_parameters_im['features']):
+        if len(frame_face_parameters['locations']) != len(frame_face_parameters['features']):
             raise Exception("can't commit screen len locations != len features")
-        total_faces = len(face_parameters_im['locations'])
+        total_faces = len(frame_face_parameters['locations'])
         date_now = time if time != None \
               else datetime.now(timezone.utc)
         cur = MDBQuery.conn.cursor()
@@ -184,7 +184,7 @@ class MDBQuery:
         cur_processed_screens_id = cur_processed_screens_id[0][0]
         # print(cur_processed_screens_id)
 
-        zip_face_parameters = zip(face_parameters_im['locations'], face_parameters_im['features'])
+        zip_face_parameters = zip(frame_face_parameters['locations'], frame_face_parameters['features'])
         for loc, feat in zip_face_parameters:
             cur.execute(
             "INSERT INTO screens_features \

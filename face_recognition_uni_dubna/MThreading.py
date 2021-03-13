@@ -28,7 +28,7 @@ class ThreadControllerLimitedElapsed():
         MAX_ELAPSED = 2
         class _Thread(Thread):
             def __init__(self, stop_event, *args, **kwargs):
-                super(_Thread, self).__init__(*args, **kwargs)
+                super(ThreadControllerLimitedElapsed._Thread, self).__init__(*args, **kwargs)
                 self.stop_event = stop_event
                 self.elapsed = {}
 

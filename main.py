@@ -22,7 +22,7 @@ from time import sleep
 
 ## -- Norm cod -- ##
 
-media_dir = os.path.join('media', 'test000')
+media_dir = os.path.join('media', 'test002')
 # cam_ips = [
 #     '10.210.6.152',
 #     '10.210.52.7',
@@ -83,7 +83,10 @@ while (True):
     # try:
     if cmd == 'q':
         MDispatcher.close_all_cameras()
-        MDispatcher.stop_new_screens_faces_handler()
+        try:
+            MDispatcher.stop_new_screens_faces_handler()
+        except Exception:
+            pass
         break
     elif cmd == 'db init':
         db_user = input('DB user:\n')

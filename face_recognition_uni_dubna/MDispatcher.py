@@ -6,12 +6,15 @@ from face_recognition_uni_dubna.MThreading import StoppableLoopedThread
 import os
 import cv2
 import imghdr
-from time import time, mktime
+from time import time, mktime, localtime, strftime
 from datetime import datetime
 from threading import Thread, Event
 
 class Object(object):
     pass
+
+def log(*args):
+    print(*args)
 
 class MDispatcher:
     def __init__(self):
@@ -27,14 +30,14 @@ class MDispatcher:
     def connect2db():
         conf_db = MConfig.get_by_name('DATABASE')
         MDBQuery.connect2db(
-            dbname=conf_db['Database'],
-            user=conf_db['User'],
-            password=conf_db['Password'],
-            host=conf_db['Host']
+            dbname=conf_db['database'],
+            user=conf_db['user'],
+            password=conf_db['password'],
+            host=conf_db['host']
         )
 
-        n_db_version = MDBQuery.check_version(float(conf_db['Version']))
-        if n_db_version != float(conf_db['Version']):
+        n_db_version = MDBQuery.check_version(float(conf_db['version']))
+        if n_db_version != float(conf_db['version']):
             MConfig.set_db_version(n_db_version)
     
     @staticmethod
@@ -172,13 +175,13 @@ class MDispatcher:
         MDispatcher.cameras_streams.clear()
 
     @staticmethod
-    def _start_cam(cam_conf, interval, save_dir):
+    def _start_cam(cam_conf, interval, save_dir, debug=False):
         handler = lambda frame, cam_ip: \
             MDispatcher._new_thread_of_handler_of_taked_frames(
                 frame, cam_ip, save_dir
             )
         cam = CameraStream(
-            **cam_conf, debug=True,
+            **cam_conf, debug=debug,
             handler_of_taked_frames=handler)
 
         cam.open(save_interval=interval)
@@ -197,7 +200,7 @@ class MDispatcher:
         ##### !!!!!!!!!!!!!!!!!! #####
         ##### !!!!!!!!!!!!!!!!!! #####
         ##### !!!!!!!!!!!!!!!!!! #####
-        if frame == None:
+        if type(frame) == type(None):
             raise Exception("Frame is None")
 
         n_frame_path, time = MDispatcher._get_save_file_path_by_cur_time()
@@ -205,14 +208,14 @@ class MDispatcher:
         MDispatcher._check_folder_path(os.path.split(n_frame_path)[0])
 
         # if frame != None:
-        #     cv2.imwrite(n_frame_path, frame)
+        cv2.imwrite(n_frame_path, frame)
 
         frame_face_parameters = MFaceRecognition.get_faces_parameters_of_image(n_frame_path)
         correct_time = MDispatcher._correct_time_for_db(time)
         MDBQuery.commit_screen(
             cam_ip = cam_ip,
             frame_face_parameters = frame_face_parameters,
-            n_frame_path = n_frame_path, 
+            screen_path = n_frame_path, 
             time = correct_time
         )
 
@@ -232,8 +235,8 @@ class MDispatcher:
 
     @staticmethod
     def _get_save_file_path_by_cur_time():
-        cur_time = time.localtime()
-        cur_time_str = time.strftime(
+        cur_time = localtime()
+        cur_time_str = strftime(
             "%y_%m_%d-%H_%M_%S",
             cur_time
         )
@@ -258,8 +261,18 @@ class MDispatcher:
         
     @staticmethod
     def add_cam_in_conf(cam_ip, cam_auth_login, cam_auth_password):
-        MConfig.add_camera(cam_ip, cam_auth_login, cam_auth_password)
-    
+
+        is_connectable = CameraStream.is_connectable_cam_params(
+            cam_ip = cam_ip,
+            auth_login = cam_auth_login,
+            auth_password = cam_auth_password
+        )
+
+        if is_connectable:
+            MConfig.add_camera(cam_ip, cam_auth_login, cam_auth_password)
+        else:
+            print()
+
 
     @staticmethod
     def get_cameras_list():

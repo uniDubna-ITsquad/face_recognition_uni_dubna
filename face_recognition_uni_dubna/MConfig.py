@@ -32,10 +32,9 @@ class MConfig:
             float(version)
         except TypeError as e:
             raise Exception('Database version must be a number')
-        config = configparser.ConfigParser()
-        config.read(_config_file_name)
+        config = MConfig._get_conf_dict()
 
-        config.set('DATABASE', 'Version', str(version))
+        config['DATABASE']['version'] = str(version)
 
         MConfig._save_config(config)
 
