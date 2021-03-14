@@ -142,12 +142,14 @@ class CameraStream:
 
     @staticmethod         
     def is_connectable_cam_params(*, cam_ip, auth_login='admin', auth_password='admin'):
+        cam_cap = None
         try:
-            self.cam_cap = cv2.VideoCapture(
+            cam_cap = cv2.VideoCapture(
                 f"rtsp://{auth_login}:{auth_password}@{cam_ip}"
             )
-        except:
+        except Exception as err:
+            print(err)
             return False
-        self.cam_cap.release()
+        cam_cap.release()
 
         return True

@@ -269,9 +269,11 @@ class MDispatcher:
         )
 
         if is_connectable:
+            MDBQuery.insert_camera(cam_ip)
             MConfig.add_camera(cam_ip, cam_auth_login, cam_auth_password)
+
         else:
-            print()
+            log('Camera is not connectable')
 
 
     @staticmethod
