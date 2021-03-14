@@ -3,12 +3,15 @@ from face_recognition_uni_dubna.MFaceRecognition import MFaceRecognition
 from face_recognition_uni_dubna.CameraStream import CameraStream
 from face_recognition_uni_dubna.MConfig import MConfig
 from face_recognition_uni_dubna.MThreading import StoppableLoopedThread
+from face_recognition_uni_dubna.MLogs import MLogs
 import os
 import cv2
 import imghdr
 from time import time, mktime, localtime, strftime
 from datetime import datetime
 from threading import Thread, Event
+
+log_info = lambda message : MLogs.info('Dispatcher', message)
 
 class Object(object):
     pass
@@ -22,7 +25,7 @@ class MDispatcher:
 
     @staticmethod
     def test():
-        pass
+        log_info('test')
 
 ##### DB #####
 

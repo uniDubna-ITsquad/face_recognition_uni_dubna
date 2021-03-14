@@ -131,7 +131,7 @@ while (True):
         
 ##### XD #####
     elif cmd == 'test':
-        pass
+        MDispatcher.test()
         # MDispatcher.connect2db()
         # for cam_ip in cam_ips:
         #     MDispatcher.add_cam_in_conf(cam_ip, '***')
