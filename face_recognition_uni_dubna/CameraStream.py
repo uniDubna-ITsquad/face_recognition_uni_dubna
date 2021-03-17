@@ -1,13 +1,15 @@
-
+from face_recognition_uni_dubna.MThreading import ThreadControllerLimitedElapsed
+from face_recognition_uni_dubna.MLogs import MLogs
 import time
 import os
 import cv2
 import sys
-from face_recognition_uni_dubna.MThreading import ThreadControllerLimitedElapsed
+
+
+log_info = lambda message : MLogs.info('CameraStream', message)
+log_error = lambda message : MLogs.error('CameraStream', message)
 
 class CameraStream:
-    
-       
     _thread_controller = None
     @property
     def _thread_controller(self):
@@ -26,14 +28,26 @@ class CameraStream:
         self.is_debug = debug
         self.handler_of_taked_frames = handler_of_taked_frames
         self._is_tread_alive = False
-        self._test_open()
+
+    def is_openable_rtsp(self):
+        res = False
+        try:
+            if not self.is_debug:
+                self._open_rtsp()
+            res = True
+        except Exception as e:
+            pass
+        if res:
+            passself._close_rtsp()
+        return res
+
 
     def open(self, *, save_interval):
+        log_info(f'Open rtsp for {self.cam_ip}')
         if not self.is_debug:
             self._open_rtsp()
         self._add2thread(save_interval)
         self._is_tread_alive = True
-        print(f"start {self.cam_ip}")
 
     def close(self):
         if not self._is_tread_alive:
@@ -44,11 +58,6 @@ class CameraStream:
             self._close_rtsp()
 
         self._is_tread_alive = False
-
-    def _test_open(self):
-        if not self.is_debug:
-            self._open_rtsp()
-            self._close_rtsp()
 
     def _open_rtsp(self):
         print('open')
@@ -78,6 +87,8 @@ class CameraStream:
 
     def _get_save_handler(self, interval):
         start_time = [int(round(time.time() * 1000))]
+        # Count of frame before invoke handler
+        frame_counter = [0]
         # start_time = [0]
         def _try_save_screen():
             cur_time = int(round(time.time() * 1000))
@@ -87,6 +98,8 @@ class CameraStream:
             frame = None
             if not self.is_debug:
                 ret, frame = self.cam_cap.read()
+            if type(frame) != type(None):
+                frame_counter[0] += 1
             # if diff_time > interval / 1000:
             if diff_time > interval:
                 if not self.is_debug and not ret and frame == None:
@@ -96,9 +109,12 @@ class CameraStream:
                     # return _try_save_screen()
                     return None
                 # self._save_screen(frame)
-                self.handler_of_taked_frames(frame, self.cam_ip)
 
+                log_info(f'Unsend frame count is {frame_counter[0]} for {self.cam_ip}')
+                frame_counter[0] = 0
                 start_time[0] += interval
+                self.handler_of_taked_frames(frame, self.cam_ip)
+                log_info(f'End of camera while')
 
         return _try_save_screen
     
@@ -142,12 +158,14 @@ class CameraStream:
 
     @staticmethod         
     def is_connectable_cam_params(*, cam_ip, auth_login='admin', auth_password='admin'):
+        cam_cap = None
         try:
-            self.cam_cap = cv2.VideoCapture(
+            cam_cap = cv2.VideoCapture(
                 f"rtsp://{auth_login}:{auth_password}@{cam_ip}"
             )
-        except:
+        except Exception as err:
+            print(err)
             return False
-        self.cam_cap.release()
+        cam_cap.release()
 
         return True

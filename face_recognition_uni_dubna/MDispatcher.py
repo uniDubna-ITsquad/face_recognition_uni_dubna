@@ -3,12 +3,16 @@ from face_recognition_uni_dubna.MFaceRecognition import MFaceRecognition
 from face_recognition_uni_dubna.CameraStream import CameraStream
 from face_recognition_uni_dubna.MConfig import MConfig
 from face_recognition_uni_dubna.MThreading import StoppableLoopedThread
+from face_recognition_uni_dubna.MLogs import MLogs
 import os
 import cv2
 import imghdr
 from time import time, mktime, localtime, strftime
 from datetime import datetime
 from threading import Thread, Event
+
+log_info = lambda message : MLogs.info('Dispatcher', message)
+log_error = lambda message : MLogs.error('Dispatcher', message)
 
 class Object(object):
     pass
@@ -22,19 +26,27 @@ class MDispatcher:
 
     @staticmethod
     def test():
-        pass
+        log_info('test')
 
 ##### DB #####
 
     @staticmethod
     def connect2db():
         conf_db = MConfig.get_by_name('DATABASE')
-        MDBQuery.connect2db(
-            dbname=conf_db['database'],
-            user=conf_db['user'],
-            password=conf_db['password'],
-            host=conf_db['host']
-        )
+        try:
+            MDBQuery.connect2db(
+                dbname=conf_db['database'],
+                user=conf_db['user'],
+                password=conf_db['password'],
+                host=conf_db['host']
+            )
+        except Exception as e:
+            print(e)
+            log_error('Failde to connect to database')
+            return
+
+        log_info('Successfy connection to dabadase')
+
 
         n_db_version = MDBQuery.check_version(float(conf_db['version']))
         if n_db_version != float(conf_db['version']):
@@ -189,11 +201,14 @@ class MDispatcher:
 
     @staticmethod
     def _new_thread_of_handler_of_taked_frames(frame, cam_ip, save_dir):
+        log_info('Start Dispatcher New thread')
+        log_info(f'Send from {cam_ip}')
         n_thread = Thread(
             target=MDispatcher._handler_of_taked_frames,
             args=(frame, cam_ip, save_dir,)
         )
         n_thread.start()
+        log_info('End Dispatcher New thread')
 
     @staticmethod
     def _handler_of_taked_frames(frame, cam_ip, save_dir):
@@ -203,21 +218,24 @@ class MDispatcher:
         if type(frame) == type(None):
             raise Exception("Frame is None")
 
+        log_info(f'Start screen handler')
         n_frame_path, time = MDispatcher._get_save_file_path_by_cur_time()
         n_frame_path = os.path.join(save_dir, cam_ip, n_frame_path)
+        log_info(f'Get screen {n_frame_path}')
         MDispatcher._check_folder_path(os.path.split(n_frame_path)[0])
 
         # if frame != None:
         cv2.imwrite(n_frame_path, frame)
 
-        frame_face_parameters = MFaceRecognition.get_faces_parameters_of_image(n_frame_path)
-        correct_time = MDispatcher._correct_time_for_db(time)
-        MDBQuery.commit_screen(
-            cam_ip = cam_ip,
-            frame_face_parameters = frame_face_parameters,
-            screen_path = n_frame_path, 
-            time = correct_time
-        )
+        log_info(f'End screen handler')
+        # frame_face_parameters = MFaceRecognition.get_faces_parameters_of_image(n_frame_path)
+        # correct_time = MDispatcher._correct_time_for_db(time)
+        # MDBQuery.commit_screen(
+        #     cam_ip = cam_ip,
+        #     frame_face_parameters = frame_face_parameters,
+        #     screen_path = n_frame_path, 
+        #     time = correct_time
+        # )
 
     @staticmethod
     def _correct_time_for_db(time):
@@ -269,9 +287,11 @@ class MDispatcher:
         )
 
         if is_connectable:
+            MDBQuery.insert_camera(cam_ip)
             MConfig.add_camera(cam_ip, cam_auth_login, cam_auth_password)
+
         else:
-            print()
+            log('Camera is not connectable')
 
 
     @staticmethod

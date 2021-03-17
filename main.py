@@ -23,15 +23,6 @@ from time import sleep
 ## -- Norm cod -- ##
 
 media_dir = os.path.join('media', 'test002')
-# cam_ips = [
-#     '10.210.6.152',
-#     '10.210.52.7',
-#     '10.210.52.8',
-#     '10.210.52.6',
-#     '10.210.1.6',
-
-# ]
-
 # streams = []
 
 # for cam_ip in cam_ips:
@@ -103,7 +94,7 @@ while (True):
     elif cmd == 'camera remove':
         cameras_list = MDispatcher.get_cameras_list()
         print_cameras_list(cameras_list)
-        cam_choice = input('Which one to delete?:\n')
+        cam_choice = input('Which one to remove?:\n')
         MDispatcher.del_cam_from_config(cam_choice)
     elif cmd == 'camera list':
         cameras_list = MDispatcher.get_cameras_list()
@@ -111,7 +102,7 @@ while (True):
     elif cmd == 'camera start':
         cameras_list = MDispatcher.get_cameras_list()
         print_cameras_list(cameras_list)
-        cam_choice = input('Which one to delete?:\n')
+        cam_choice = input('Which one to start?:\n')
         interval = input('What interval?:\n')
         if interval.isdigit():
             interval = int(interval)
@@ -139,7 +130,12 @@ while (True):
 
         
 ##### XD #####
-    # elif cmd == 'test':
+    elif cmd == 'test':
+        MDispatcher.test()
+        # MDispatcher.connect2db()
+        # for cam_ip in cam_ips:
+        #     MDispatcher.add_cam_in_conf(cam_ip, '***')
+
     #     tt.add_to_queue(fun = fun, args = ('test0', ), kwargs = {'slp' : 1})
     #     tt.add_to_queue(fun = fun, args = ('test1', ), kwargs = {'slp' : 2})
     #     tt.add_to_queue(fun = fun, args = ('test2', ), kwargs = {'slp' : 3})
@@ -157,16 +153,6 @@ while (True):
 
 print('bb')
 
-# MDispatcher.add_cam_in_conf('10.210.52.7', 'admin', 'admin')
-
-# media_dir = os.path.join('media', 'test000')
-# cam_ips = [
-#     '10.210.6.152',
-#     '10.210.52.7',
-#     '10.210.52.8',
-#     '10.210.52.6',
-#     '10.210.1.6',
-# ]
 
 # cameras_connector = MDispatcher.get_cameras_connector(media_dir)
 

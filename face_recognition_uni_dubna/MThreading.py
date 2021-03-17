@@ -1,6 +1,11 @@
+from face_recognition_uni_dubna.MLogs import MLogs
 from threading import Thread, Event, Semaphore, BoundedSemaphore
 import time
 import sys
+
+
+log_info = lambda message : MLogs.info('Threading', message)
+log_error = lambda message : MLogs.error('Threading', message)
 
 class StoppableLoopedThread(Thread):
     """Thread class with a stop() method. The thread itself has to check
@@ -13,9 +18,11 @@ class StoppableLoopedThread(Thread):
         self.sleep_time = sleep_time
 
     def run(self):
+        log_info('Start Looped Thread')
         while not self._stop_event.is_set():
             self.target()
             time.sleep(self.sleep_time)
+        log_info('Stop Looped Thread')
         
 
     def stop(self):
@@ -25,7 +32,9 @@ class StoppableLoopedThread(Thread):
         return self._stop_event.is_set()
 
 class ThreadControllerLimitedElapsed():
-        MAX_ELAPSED = 2
+        MAX_ELAPSED = 1
+        LOOP_IN_SECOND = 50
+
         class _Thread(Thread):
             def __init__(self, stop_event, *args, **kwargs):
                 super(ThreadControllerLimitedElapsed._Thread, self).__init__(*args, **kwargs)
@@ -33,9 +42,12 @@ class ThreadControllerLimitedElapsed():
                 self.elapsed = {}
 
             def run(self):
+                log_info('Start Limited Thread')
                 while not self.stop_event.is_set():
                     for fun in list(self.elapsed.values()):
                         fun()
+                    time.sleep(1 / ThreadControllerLimitedElapsed.LOOP_IN_SECOND)
+                log_info('Stop Limited Thread')
 
         def __init__(self):
             self._elapsed = {}

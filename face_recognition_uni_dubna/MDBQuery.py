@@ -244,6 +244,20 @@ UPDATE public.screens_features
         """
         cur = MDBQuery.conn.cursor()
         cur.execute(command)
+# ;
+        cur.close()
+        MDBQuery.conn.commit()
+
+    @staticmethod
+    @connection_require
+    def insert_camera(cam_ip):
+        command = f"""\
+INSERT INTO public.cameras (ip)
+    VALUES ('{cam_ip}');
+        """
+        cur = MDBQuery.conn.cursor()
+        cur.execute(command)
 
         cur.close()
         MDBQuery.conn.commit()
+
