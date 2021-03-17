@@ -4,3 +4,4 @@ media/*
 config.json
 config.cfg
 test.py
+logs/*
