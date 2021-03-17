@@ -2,7 +2,8 @@ from face_recognition_uni_dubna.MDBQuery import MDBQuery
 from face_recognition_uni_dubna.MFaceRecognition import MFaceRecognition
 from face_recognition_uni_dubna.CameraStream import CameraStream
 from face_recognition_uni_dubna.MConfig import MConfig
-from face_recognition_uni_dubna.MThreading import StoppableLoopedThread
+from face_recognition_uni_dubna.MThreading \
+    import StoppableLoopedThread, MultipleQueueThread
 from face_recognition_uni_dubna.MLogs import MLogs
 import os
 import cv2
@@ -26,9 +27,14 @@ class MDispatcher:
 
     @staticmethod
     def test():
-        log_info('test')
-
-##### DB #####
+        CameraStream.is_connectable_cam_params(
+            cam_ip = '172.25.1.82'
+        )
+######################################
+######################################
+################# DB #################
+######################################
+######################################
 
     @staticmethod
     def connect2db():
@@ -60,7 +66,11 @@ class MDispatcher:
             db_name=db_name
         )
 
-##### Face Recognition #####
+######################################
+######################################
+########## Face Recognition ##########
+######################################
+######################################
 
     handler_new_screens = None
 
@@ -117,7 +127,7 @@ class MDispatcher:
                 yield full_file_name
 
     @staticmethod
-    def start_new_screens_faces_handler():
+    def start_screens_faces_handler():
         if MDispatcher.handler_new_screens != None:
             raise Exception('Screens faces handler is already running')
 
@@ -130,15 +140,17 @@ class MDispatcher:
             sleep_time = 2
         )
         MDispatcher.handler_new_screens.start()
+        log_info('Start handler of new screen faces')
 
     @staticmethod
-    def stop_new_screens_faces_handler():
+    def stop_screens_faces_handler():
         if MDispatcher.handler_new_screens == None:
             raise Exception('Screens faces handler is not alive')
 
         MDispatcher.handler_new_screens.stop()
         MDispatcher.handler_new_screens = None
         MFaceRecognition.set_student_data(None)
+        log_info('Stop handler of new screen faces')
         
     @staticmethod
     def _handler_for_unprocessed_faces():
@@ -153,8 +165,33 @@ class MDispatcher:
             
             MDBQuery.update_screens_face4match_student(screen_face_id, student_id)
 
-##### Camera Commands #####
+######################################
+######################################
+########### Camera Commands ##########
+######################################
+######################################
+
     cameras_streams = {}
+    commiter4taked_screens = None
+
+    @staticmethod
+    def start_commiter4taked_screens():
+        if MDispatcher.commiter4taked_screens != None and\
+            not MDispatcher.commiter4taked_screens.is_stopped():
+           raise Exception('Commiter already running')
+        MDispatcher.commiter4taked_screens = MultipleQueueThread(
+            target = MDispatcher._handler_of_taked_frames,
+            max_thread4queue = 5
+        )
+        log_info('Start commiter for taked screen')
+
+    def stop_commiter4taked_screens():
+        if MDispatcher.commiter4taked_screens == None or\
+            MDispatcher.commiter4taked_screens.is_stopped():
+           raise Exception('Commiter already stopped or uninitialization')
+        
+        MDispatcher.commiter4taked_screens.stop()
+        log_info('Stop commiter for taked screen')
 
     @staticmethod
     def start_cam_with_interval(cam_choice, interval, save_dir):
@@ -188,9 +225,9 @@ class MDispatcher:
 
     @staticmethod
     def _start_cam(cam_conf, interval, save_dir, debug=False):
-        handler = lambda frame, cam_ip: \
+        handler = lambda frame, cam_ip, send_time: \
             MDispatcher._new_thread_of_handler_of_taked_frames(
-                frame, cam_ip, save_dir
+                frame, cam_ip, save_dir, send_time
             )
         cam = CameraStream(
             **cam_conf, debug=debug,
@@ -200,46 +237,49 @@ class MDispatcher:
         MDispatcher.cameras_streams[cam_conf['cam_ip']] = cam
 
     @staticmethod
-    def _new_thread_of_handler_of_taked_frames(frame, cam_ip, save_dir):
-        log_info('Start Dispatcher New thread')
-        log_info(f'Send from {cam_ip}')
-        n_thread = Thread(
-            target=MDispatcher._handler_of_taked_frames,
-            args=(frame, cam_ip, save_dir,)
+    def _new_thread_of_handler_of_taked_frames(frame, cam_ip, save_dir, send_time):
+        # log_info('Start Dispatcher New thread')
+        # log_info(f'Send from {cam_ip}')
+        MDispatcher.commiter4taked_screens.put(
+            args = (frame, cam_ip, save_dir, send_time,)
         )
-        n_thread.start()
-        log_info('End Dispatcher New thread')
+        # log_info('End Dispatcher New thread')
 
     @staticmethod
-    def _handler_of_taked_frames(frame, cam_ip, save_dir):
+    def _handler_of_taked_frames(frame, cam_ip, save_dir, send_time):
         ##### !!!!!!!!!!!!!!!!!! #####
         ##### !!!!!!!!!!!!!!!!!! #####
         ##### !!!!!!!!!!!!!!!!!! #####
         if type(frame) == type(None):
             raise Exception("Frame is None")
 
-        log_info(f'Start screen handler')
-        n_frame_path, time = MDispatcher._get_save_file_path_by_cur_time()
+        # log_info(f'Start screen handler')
+        log_info(f'test0')
+        n_frame_path = MDispatcher._get_save_file_path_by_time(send_time)
+        log_info(f'test1')
         n_frame_path = os.path.join(save_dir, cam_ip, n_frame_path)
-        log_info(f'Get screen {n_frame_path}')
+        log_info(f'Path {n_frame_path}')
         MDispatcher._check_folder_path(os.path.split(n_frame_path)[0])
 
         # if frame != None:
         cv2.imwrite(n_frame_path, frame)
 
-        log_info(f'End screen handler')
-        # frame_face_parameters = MFaceRecognition.get_faces_parameters_of_image(n_frame_path)
-        # correct_time = MDispatcher._correct_time_for_db(time)
-        # MDBQuery.commit_screen(
-        #     cam_ip = cam_ip,
-        #     frame_face_parameters = frame_face_parameters,
-        #     screen_path = n_frame_path, 
-        #     time = correct_time
-        # )
+        frame_face_parameters = MFaceRecognition.get_faces_parameters_of_image(n_frame_path)
+        correct_time = MDispatcher._correct_time_for_db(send_time)
+        faces_count = len(frame_face_parameters['locations'])
+        log_info('test')
+        MDBQuery.commit_screen(
+            cam_ip = cam_ip,
+            frame_face_parameters = frame_face_parameters,
+            screen_path = n_frame_path, 
+            time = correct_time
+        )
+        log_info(f'End send for: {cam_ip}  faces count: {faces_count}\n\tby path: {n_frame_path}')
 
     @staticmethod
     def _correct_time_for_db(time):
-        return datetime.fromtimestamp(mktime(time))
+        return time
+        # return datetime.fromtimestamp(mktime(time))
 
     @staticmethod
     def _check_folder_path(folder_path):
@@ -252,23 +292,31 @@ class MDispatcher:
                 os.mkdir(cur_folder_path)
 
     @staticmethod
-    def _get_save_file_path_by_cur_time():
-        cur_time = localtime()
-        cur_time_str = strftime(
-            "%y_%m_%d-%H_%M_%S",
-            cur_time
+    def _get_save_file_path_by_time(send_time):
+        # log_info(f'\ttest {send_time}')
+        cur_time_str = send_time.strftime(
+            "%y_%m_%d-%H_%M_%S_%f"
         )
 
+        log_info(f'\t{cur_time_str}')
+        log_info('\ttest0')
         [file_dir, file_name] = cur_time_str.split('-')
+        log_info('\ttest1')
         
         res_path = os.path.join(
             *file_dir.split('_'),
             file_name + '.jpg'
         )
+        log_info('\ttest2')
 
-        return (res_path, cur_time)
+        return res_path
 
-##### MConfig #####
+######################################
+######################################
+############### MConfig ##############
+######################################
+######################################
+
     @staticmethod
     def del_cam_from_config(choice):
         if choice.isdigit():
@@ -309,26 +357,3 @@ class MDispatcher:
             return MConfig.get_camera_by_id(int(choice))
         else:
             return MConfig.get_camera_by_ip(choice)
-
-
-    # @staticmethod
-    # def _get_cameras_connector(save_dir):
-    #     def connector(*args, **kwargs):
-    #         handler = lambda frame: \
-    #             MDispatcher._handler_of_taked_frames(frame, save_dir)
-    #         cam = CameraStream(
-    #             *args, **kwargs,
-    #             handler_of_taked_frames=handler)
-    #         obj = Object()
-    #         setattr(
-    #             obj, 'open',
-    #             lambda interval: \
-    #                 cam.open(save_interval=interval)
-    #         )
-    #         setattr(
-    #             obj, 'close',
-    #             lambda interval: cam.close()
-    #         )
-    #         return obj
-
-    #     return connector

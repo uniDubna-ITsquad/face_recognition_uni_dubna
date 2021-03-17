@@ -1,5 +1,6 @@
 from face_recognition_uni_dubna.MThreading import ThreadControllerLimitedElapsed
 from face_recognition_uni_dubna.MLogs import MLogs
+from datetime import datetime
 import time
 import os
 import cv2
@@ -52,15 +53,16 @@ class CameraStream:
     def close(self):
         if not self._is_tread_alive:
             raise Exception("cannot close a stream that was not open")
-        print(f"close {self.cam_ip}")
+        # print(f"close {self.cam_ip}")
         self._remove_from_timer()
         if not self.is_debug:
             self._close_rtsp()
+        log_info(f'Close rtsp for {self.cam_ip}')
 
         self._is_tread_alive = False
 
     def _open_rtsp(self):
-        print('open')
+        # print('open')
         self.cam_cap = cv2.VideoCapture(
             f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
         )
@@ -91,8 +93,9 @@ class CameraStream:
         frame_counter = [0]
         # start_time = [0]
         def _try_save_screen():
-            cur_time = int(round(time.time() * 1000))
-            diff_time = cur_time - start_time[0]
+            # In seconds
+            cur_time = time.time()
+            diff_time = int(round(cur_time * 1000)) - start_time[0]
             # cur_time = self._get_duration_of_capture()
             # diff_time = cur_time - start_time[0]
             frame = None
@@ -110,11 +113,14 @@ class CameraStream:
                     return None
                 # self._save_screen(frame)
 
-                log_info(f'Unsend frame count is {frame_counter[0]} for {self.cam_ip}')
+                log_info(f'Start send for {self.cam_ip}\n\t' +\
+                    f'Unsend frame count is {frame_counter[0]} for {self.cam_ip}'
+                )
                 frame_counter[0] = 0
                 start_time[0] += interval
-                self.handler_of_taked_frames(frame, self.cam_ip)
-                log_info(f'End of camera while')
+                cur_date = datetime.now()
+                self.handler_of_taked_frames(frame, self.cam_ip, cur_date)
+                # log_info(f'End of camera while')
 
         return _try_save_screen
     
@@ -166,6 +172,9 @@ class CameraStream:
         except Exception as err:
             print(err)
             return False
+
+        ret, frame = cam_cap.read()
+        
         cam_cap.release()
 
-        return True
+        return ret

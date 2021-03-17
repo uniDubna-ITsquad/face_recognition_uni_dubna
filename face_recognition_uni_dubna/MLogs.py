@@ -15,12 +15,12 @@ class MLogs:
     def info(message_name, message):
         identifier = 'I'
         MLogs._write_for_file(
-            file_name = file_logs_name,
+            file_name = file_logs_info_name,
             message_name = message_name,
             message = message
         )
         MLogs._write_for_file(
-            file_name = file_logs_info_name,
+            file_name = file_logs_name,
             message_name = message_name,
             message = message,
             identifier = identifier
@@ -30,12 +30,12 @@ class MLogs:
     def error(message_name, message):
         identifier = 'E'
         MLogs._write_for_file(
-            file_name = file_logs_name,
+            file_name = file_logs_error_name,
             message_name = message_name,
             message = message
         )
         MLogs._write_for_file(
-            file_name = file_logs_error_name,
+            file_name = file_logs_name,
             message_name = message_name,
             message = message,
             identifier = identifier
@@ -55,8 +55,8 @@ class MLogs:
 
     @staticmethod
     def _append_line_in_file(file_name, line):
-        with open(file_name, 'w+') as f_log:
-            f_log.write(line)
+        with open(file_name, 'a') as f_log:
+            f_log.write(line + '\n')
 
     @staticmethod
     def _message_pattern(*, identifier=None, message_name, message):
@@ -65,7 +65,6 @@ class MLogs:
             f'[{identifier}] ' if identifier else '',
             message_name, cur_time_str, message
         )
-        print(res_message)
         return res_message 
 
     already_exit_files = []
