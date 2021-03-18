@@ -113,9 +113,8 @@ class CameraStream:
                     return None
                 # self._save_screen(frame)
 
-                log_info(f'Start send for {self.cam_ip}\n\t' +\
-                    f'Unsend frame count is {frame_counter[0]} for {self.cam_ip}'
-                )
+                log_info(f'Start send for {self.cam_ip}')
+                log_info(f'Unsend frame count is {frame_counter[0]} for {self.cam_ip}')
                 frame_counter[0] = 0
                 start_time[0] += interval
                 cur_date = datetime.now()

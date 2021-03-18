@@ -1,8 +1,12 @@
+from face_recognition_uni_dubna.MLogs import MLogs
 import psycopg2 as psql
-
 from datetime import datetime, timezone
 import time
 from time import mktime
+
+
+log_info = lambda message : MLogs.info('MDBQuery', message)
+log_error = lambda message : MLogs.error('MDBQuery', message)
 
 # import numpy as np
 # from psycopg2.extensions import register_adapter, AsIs
@@ -202,7 +206,7 @@ class MDBQuery:
         command = """\
 SELECT s.student_name_id, sf.feature
     FROM public.students_features AS sf, public.students AS s
-    WHERE  sf.id = s.student_feature_id;
+    WHERE  sf.id = s.student_feature_id and sf.id != 404;
         """
         cur = MDBQuery.conn.cursor()
         cur.execute(command)
@@ -236,7 +240,10 @@ SELECT id, face_feature
 
     @staticmethod
     @connection_require
-    def update_screens_face4match_student(screen_face_id, student_id):
+    def update_screens_face4match_student(screen_face_id, student_ids):
+
+        student_id = student_ids[0] if len(student_ids) == 1 else 404
+
         command = f"""\
 UPDATE public.screens_features
 	SET looks_like_student_id={student_id}
@@ -253,7 +260,7 @@ UPDATE public.screens_features
     def insert_camera(cam_ip):
         command = f"""\
 INSERT INTO public.cameras (ip)
-    VALUES ('{cam_ip}');
+    VALUES ({cam_ip});
         """
         cur = MDBQuery.conn.cursor()
         cur.execute(command)
@@ -261,3 +268,29 @@ INSERT INTO public.cameras (ip)
         cur.close()
         MDBQuery.conn.commit()
 
+    
+    @staticmethod
+    @connection_require
+    def get_processed_screens_by_cam_ip(camera_ip):
+
+        command = f"""\
+SELECT 
+    ps.path, 
+    json_agg(sf.face_location) as face_locations,
+    json_agg(sn.name) as students
+    FROM processed_screens ps
+    LEFT JOIN screens_features sf
+        ON ps.id = sf.screen_id 
+    LEFT JOIN students_names sn
+        ON sn.id = sf.looks_like_student_id
+    WHERE ps.camera_ip = '{camera_ip}'
+    GROUP BY ps.path
+    ORDER BY MIN(ps.date);
+        """
+    
+        cur = MDBQuery.conn.cursor()
+        cur.execute(command)
+
+        data = cur.fetchall()
+        cur.close()
+        return data

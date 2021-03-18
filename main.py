@@ -2,6 +2,7 @@
 
 from face_recognition_uni_dubna.MDispatcher import MDispatcher
 from face_recognition_uni_dubna.MThreading import ThreadSemaphore
+from face_recognition_uni_dubna.VideoSplitter import VideoSplitter
 import os
 from tabulate import tabulate
 from time import sleep
@@ -109,6 +110,17 @@ while (True):
         MDispatcher.start_screens_faces_handler()
     elif cmd == 'dispatcher face_handler stop':
         MDispatcher.stop_screens_faces_handler()
+    elif cmd == 'students load':
+        stud_path = os.path.join('media', 'it_squad')
+        MDispatcher.load_student_features_from_dir(stud_path)
+    elif cmd == 'test_video' or cmd == 'tv':
+        video_location = os.path.join('media', 'test_video', 'test.mp4')
+        video_out_path = os.path.join('media', 'test_video', 'out')
+        interval_ms = 1000 / 3
+        MDispatcher.start_video(video_location, video_out_path, interval_ms)
+    elif cmd == 'get screens':
+        out_file = os.path.join("media", "res.json")
+        MDispatcher.get_and_save_screens_by_cam_ip('test', out_file)
 
         
 ##### XD #####

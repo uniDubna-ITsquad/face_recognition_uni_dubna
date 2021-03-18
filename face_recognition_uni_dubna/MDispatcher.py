@@ -1,6 +1,7 @@
 from face_recognition_uni_dubna.MDBQuery import MDBQuery
 from face_recognition_uni_dubna.MFaceRecognition import MFaceRecognition
 from face_recognition_uni_dubna.CameraStream import CameraStream
+from face_recognition_uni_dubna.VideoSplitter import VideoSplitter
 from face_recognition_uni_dubna.MConfig import MConfig
 from face_recognition_uni_dubna.MThreading \
     import StoppableLoopedThread, MultipleQueueThread
@@ -8,8 +9,9 @@ from face_recognition_uni_dubna.MLogs import MLogs
 import os
 import cv2
 import imghdr
+import json
 from time import time, mktime, localtime, strftime
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from threading import Thread, Event
 
 log_info = lambda message : MLogs.info('Dispatcher', message)
@@ -27,9 +29,9 @@ class MDispatcher:
 
     @staticmethod
     def test():
-        CameraStream.is_connectable_cam_params(
-            cam_ip = '172.25.1.82'
-        )
+        MDBQuery.get_processed_screens_by_cam_ip('test')
+
+
 ######################################
 ######################################
 ################# DB #################
@@ -93,10 +95,18 @@ class MDispatcher:
         corrects_screen_pathes = MDispatcher._get_correct_pictures_from_dir(folder_path)
         for screen_path in corrects_screen_pathes:
             frame_face_parameters = MFaceRecognition.get_faces_parameters_of_image(screen_path)
+            log_info(f'Load student path: {screen_path}')
+            log_info(f'\tTotal faces: {len(frame_face_parameters["locations"])}')
             MDBQuery.commit_screen(
                 screen_path = screen_path, 
                 frame_face_parameters = frame_face_parameters
             )
+
+    @staticmethod
+    def get_and_save_screens_by_cam_ip(cam_ip, out_file):
+        data = MDBQuery.get_processed_screens_by_cam_ip(cam_ip)
+        with open(out_file, 'w') as json_file:
+            json.dump(data, json_file)
 
 
     @staticmethod
@@ -112,9 +122,9 @@ class MDispatcher:
         )
 
         for screen_face_id, screen_face_feature in zip_screens_faces:
-            student_id = MFaceRecognition.recognize_face(screen_face_feature)
+            student_ids = MFaceRecognition.recognize_face(screen_face_feature)
             
-            MDBQuery.update_screens_face4match_student(screen_face_id, student_id)
+            MDBQuery.update_screens_face4match_student(screen_face_id, student_ids)
        # MFaceRecognition.compare()
 
 
@@ -161,9 +171,10 @@ class MDispatcher:
             screens_faces_data['features']
         )
         for screen_face_id, screen_face_feature in zip_screens_faces:
-            student_id = MFaceRecognition.recognize_face(screen_face_feature)
+            student_ids = MFaceRecognition.recognize_face(screen_face_feature)
             
-            MDBQuery.update_screens_face4match_student(screen_face_id, student_id)
+            MDBQuery.update_screens_face4match_student(screen_face_id, student_ids)
+
 
 ######################################
 ######################################
@@ -247,18 +258,12 @@ class MDispatcher:
 
     @staticmethod
     def _handler_of_taked_frames(frame, cam_ip, save_dir, send_time):
-        ##### !!!!!!!!!!!!!!!!!! #####
-        ##### !!!!!!!!!!!!!!!!!! #####
-        ##### !!!!!!!!!!!!!!!!!! #####
         if type(frame) == type(None):
             raise Exception("Frame is None")
 
         # log_info(f'Start screen handler')
-        log_info(f'test0')
         n_frame_path = MDispatcher._get_save_file_path_by_time(send_time)
-        log_info(f'test1')
         n_frame_path = os.path.join(save_dir, cam_ip, n_frame_path)
-        log_info(f'Path {n_frame_path}')
         MDispatcher._check_folder_path(os.path.split(n_frame_path)[0])
 
         # if frame != None:
@@ -267,7 +272,6 @@ class MDispatcher:
         frame_face_parameters = MFaceRecognition.get_faces_parameters_of_image(n_frame_path)
         correct_time = MDispatcher._correct_time_for_db(send_time)
         faces_count = len(frame_face_parameters['locations'])
-        log_info('test')
         MDBQuery.commit_screen(
             cam_ip = cam_ip,
             frame_face_parameters = frame_face_parameters,
@@ -310,6 +314,46 @@ class MDispatcher:
         log_info('\ttest2')
 
         return res_path
+
+######################################
+######################################
+################ Video ###############
+######################################
+######################################
+
+    @staticmethod
+    class TimeGenerator:
+        def __init__(self, interval_ms):
+            self.interval_ms = interval_ms
+            tmp_date = date.today()
+            self._start_date = datetime(
+                tmp_date.year, tmp_date.month, tmp_date.day
+            )
+            self._counter = 0
+
+        def next(self):
+            t_delta = timedelta(minutes = self._counter * self.interval_ms / 60 / 1000)
+            self._counter += 1
+            return self._start_date + t_delta
+
+# frame, cam_ip, save_dir, send_time
+    @staticmethod
+    def start_video(video_location, save_dir, interval_ms):
+        time_gen = MDispatcher.TimeGenerator(interval_ms)
+
+        handler_of_taked_frames = lambda frame: \
+            MDispatcher._new_thread_of_handler_of_taked_frames(
+                frame, 'test', save_dir, time_gen.next()
+            )
+
+        video = VideoSplitter(
+            video_location = video_location,
+            interval_ms = interval_ms,
+            handler_of_taked_frames = handler_of_taked_frames
+        )
+
+        video.start()
+
 
 ######################################
 ######################################

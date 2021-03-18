@@ -1,7 +1,11 @@
+from face_recognition_uni_dubna.MLogs import MLogs
 import face_recognition as face_rc
 import numpy as np
 from threading import Thread, Event
 import time
+
+log_info = lambda message : MLogs.info('Dispatcher', message)
+log_error = lambda message : MLogs.error('Dispatcher', message)
 
 
 
@@ -64,14 +68,16 @@ class MFaceRecognition:
     @staticmethod
     @students_data_require
     def recognize_face(feature):
+
         res_match = face_rc.compare_faces(
             MFaceRecognition._students_data['features'],
             feature
         )
         res_ids = MFaceRecognition._students_data['ids'][res_match]
-        if len(res_ids) < 1:
-            raise Exception('No match')
-        elif len(res_ids) > 1:
-            raise Exception('So much match')
+
+        # if len(res_ids) < 1:
+        #     raise Exception('No match')
+        # elif len(res_ids) > 1:
+        #     raise Exception('So much match')
         
-        return res_ids[0] 
+        return res_ids
