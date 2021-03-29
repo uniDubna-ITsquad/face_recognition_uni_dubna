@@ -29,6 +29,7 @@ class CameraStream:
         self.is_debug = debug
         self.handler_of_taked_frames = handler_of_taked_frames
         self._is_tread_alive = False
+        self.cap_cur_fps = None
 
     def is_openable_rtsp(self):
         res = False
@@ -67,6 +68,8 @@ class CameraStream:
             f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
         )
         # self.cam_cap.set(cv2.CAP_PROP_POS_AVI_RATIO,1)
+        self.cap_cur_fps = self.cam_cap.get(cv2.CAP_PROP_FPS)
+        log_info(f'FPS is: {self.cam_cap.get(cv2.CAP_PROP_FPS)}')
 
     def _close_rtsp(self):
         self.cam_cap.release()
@@ -84,42 +87,37 @@ class CameraStream:
     def _remove_from_timer(self):
         self._thread_controller.remove_elapsed(self)
         if len(self._thread_controller) == 0:
-            print('destroyed')
             self._thread_controller = None
 
     def _get_save_handler(self, interval):
         start_time = [int(round(time.time() * 1000))]
         # Count of frame before invoke handler
         frame_counter = [0]
-        # start_time = [0]
         def _try_save_screen():
             # In seconds
             cur_time = time.time()
             diff_time = int(round(cur_time * 1000)) - start_time[0]
-            # cur_time = self._get_duration_of_capture()
-            # diff_time = cur_time - start_time[0]
             frame = None
             if not self.is_debug:
                 ret, frame = self.cam_cap.read()
             if type(frame) != type(None):
                 frame_counter[0] += 1
+            if not ret:
+                log_info('In ret')
             # if diff_time > interval / 1000:
-            if diff_time > interval:
+            # if diff_time > interval:
+            if frame_counter[0] >= self.cap_cur_fps:
                 if not self.is_debug and not ret and frame == None:
                     print("Here ----------------------------------------------\n" * 4)
                     print(ret, frame)
                     print("Here ----------------------------------------------\n" * 4)
-                    # return _try_save_screen()
+                    return _try_save_screen()
                     return None
-                # self._save_screen(frame)
 
                 log_info(f'Start send for {self.cam_ip}')
-                log_info(f'Unsend frame count is {frame_counter[0]} for {self.cam_ip}')
-                frame_counter[0] = 0
+                log_info(f'\tUnsend frame count is {frame_counter[0]} for {self.cam_ip}')
                 start_time[0] += interval
-                cur_date = datetime.now()
-                self.handler_of_taked_frames(frame, self.cam_ip, cur_date)
-                # log_info(f'End of camera while')
+                frame_counter[0] = 0
 
         return _try_save_screen
     
@@ -161,6 +159,35 @@ class CameraStream:
         return int(self.cam_cap.get(cv2.CAP_PROP_POS_FRAMES)) \
              / int(self.cam_cap.get(cv2.CAP_PROP_FPS))
 
+    @staticmethod
+    def check_cam_fps(*, cam_ip, auth_login='admin', auth_password='admin'):
+        TIME4TEST = 68
+        FIRST_PASS = 8
+        frame_count_by_sec = [0]
+
+        cam_cap = cv2.VideoCapture(
+            f"rtsp://{auth_login}:{auth_password}@{cam_ip}"
+        )
+        log_info(f'Check fps for: {cam_ip}')
+
+        start_time = time.time()
+        while start_time + TIME4TEST > time.time():
+            ret, frame = cam_cap.read()
+            if not ret:
+                continue
+            # log_info(start_time + len(frame_count_by_sec) > time.time())
+            if start_time + len(frame_count_by_sec) < time.time():
+                frame_count_by_sec.append(0)
+            frame_count_by_sec[len(frame_count_by_sec) - 1] += 1
+            # log_info(frame_count_by_sec)
+            # log_info(start_time + len(frame_count_by_sec))
+            # log_info(time.time())
+
+        cam_cap.release()
+        slice4res = frame_count_by_sec[FIRST_PASS:-2]
+        res_fps = sum(slice4res) / len(slice4res)
+        return res_fps
+
     @staticmethod         
     def is_connectable_cam_params(*, cam_ip, auth_login='admin', auth_password='admin'):
         cam_cap = None
@@ -177,3 +204,5 @@ class CameraStream:
         cam_cap.release()
 
         return ret
+
+

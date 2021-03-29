@@ -3,7 +3,11 @@ import os
 import time
 import json
 
-_config_file_name = 'config.json'
+
+_config_file_name = os.path.join(
+    *('/home;camera;FRUD'.split(';')), 'config.json'
+)
+
 # _config_file_name = 'config.cfg'
 
 class MConfig:
@@ -117,6 +121,15 @@ class MConfig:
             raise Exception('Camera id out of range')
 
         return config['CAMERAS'][cam_id]
+
+    @staticmethod
+    def edit_camera_by_ip(cam_ip, dict2edit):
+        config = MConfig._get_conf_dict()
+        for cam in config['CAMERAS']:
+            if cam['cam_ip'] == cam_ip:
+                for key, val in dict2edit.items():
+                    cam[key] = val
+        MConfig._save_config(config)
 
     @staticmethod
     def _check_camera_by_ip_is_empty(cam_ip):

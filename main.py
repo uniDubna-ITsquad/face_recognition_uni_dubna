@@ -100,6 +100,11 @@ while (True):
         print_cameras_list(cameras_list)
         cam_choice = input('Which one to close?:\n')
         MDispatcher.close_cam(cam_choice)
+    elif cmd == 'camera check fps' or cmd == 'ccf':
+        cameras_list = MDispatcher.get_cameras_list()
+        print_cameras_list(cameras_list)
+        cam_choice = input('Which one to check fps?:\n')
+        MDispatcher.check_cam_fps(cam_choice)
     elif cmd == 'camera close all' or cmd == 'cca':
         MDispatcher.close_all_cameras()
     elif cmd == 'dispatcher screen_commiter start':
@@ -121,6 +126,9 @@ while (True):
     elif cmd == 'get screens':
         out_file = os.path.join("media", "res.json")
         MDispatcher.get_and_save_screens_by_cam_ip('test', out_file)
+    elif cmd == 'save video' or cmd == "sv":
+        path = os.path.join("media", "test_video", "out", "test", "21", "03", "18")
+        MDispatcher.get_video_from_frame(path)
 
         
 ##### XD #####

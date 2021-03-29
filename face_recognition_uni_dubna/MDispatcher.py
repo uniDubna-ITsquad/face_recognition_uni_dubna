@@ -215,6 +215,27 @@ class MDispatcher:
         for cam_conf in cameras_conf:
             if not cam_conf['cam_ip'] in MDispatcher.cameras_streams.keys():
                 MDispatcher._start_cam(cam_conf, interval, save_dir)
+    
+        
+    @staticmethod
+    def _start_cam(cam_conf, interval, save_dir, debug=False):
+        if not 'cam_fps' in cam_conf:
+            cam_fps = CameraStream.check_cam_fps(**cam_conf)
+            cam_conf = MConfig.edit_camera_by_ip(
+                cam_conf['cam_ip'], {
+                    'cam_fps': cam_fps,
+            })
+        handler = lambda frame, cam_ip, send_time: \
+            MDispatcher._new_thread_of_handler_of_taked_frames(
+                frame, cam_ip, save_dir, send_time
+            )
+        # cam = CameraStream(
+        #     **cam_conf, debug=debug,
+        #     handler_of_taked_frames=handler)
+
+        # cam.open(save_interval=interval)
+        # MDispatcher.cameras_streams[cam_conf['cam_ip']] = cam
+
 
     @staticmethod
     def close_cam(cam_choice):
@@ -235,22 +256,9 @@ class MDispatcher:
         MDispatcher.cameras_streams.clear()
 
     @staticmethod
-    def _start_cam(cam_conf, interval, save_dir, debug=False):
-        handler = lambda frame, cam_ip, send_time: \
-            MDispatcher._new_thread_of_handler_of_taked_frames(
-                frame, cam_ip, save_dir, send_time
-            )
-        cam = CameraStream(
-            **cam_conf, debug=debug,
-            handler_of_taked_frames=handler)
-
-        cam.open(save_interval=interval)
-        MDispatcher.cameras_streams[cam_conf['cam_ip']] = cam
-
-    @staticmethod
     def _new_thread_of_handler_of_taked_frames(frame, cam_ip, save_dir, send_time):
         # log_info('Start Dispatcher New thread')
-        # log_info(f'Send from {cam_ip}')
+        log_info(f'Send from {cam_ip}')
         MDispatcher.commiter4taked_screens.put(
             args = (frame, cam_ip, save_dir, send_time,)
         )
@@ -353,6 +361,11 @@ class MDispatcher:
         )
 
         video.start()
+    
+    @staticmethod
+    def get_video_from_frame(image_folder):
+        VideoSplitter.get_video_from_frame(image_folder)
+        
 
 
 ######################################
@@ -394,6 +407,11 @@ class MDispatcher:
                 [i, cam_ip, cam_ip in MDispatcher.cameras_streams.keys()]
             )
         return res
+
+
+    @staticmethod
+    def get_database_conf():
+        return MConfig.get_by_name('DATABASE')
 
     @staticmethod
     def _get_camera_from_conf(choice):
