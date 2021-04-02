@@ -5,14 +5,18 @@ from face_recognition_uni_dubna.VideoSplitter import VideoSplitter
 from face_recognition_uni_dubna.MConfig import MConfig
 from face_recognition_uni_dubna.MThreading \
     import StoppableLoopedThread, MultipleQueueThread
+from face_recognition_uni_dubna.MProcessing \
+    import MultipleQueueProc
 from face_recognition_uni_dubna.MLogs import MLogs
+from face_recognition_uni_dubna.TimeGenerator import TimeGenerator
 import os
 import cv2
 import imghdr
 import json
-from time import time, mktime, localtime, strftime
+from time import time, mktime, localtime, strftime, sleep
 from datetime import datetime, timedelta, date
 from threading import Thread, Event
+
 
 log_info = lambda message : MLogs.info('Dispatcher', message)
 log_error = lambda message : MLogs.error('Dispatcher', message)
@@ -190,9 +194,9 @@ class MDispatcher:
         if MDispatcher.commiter4taked_screens != None and\
             not MDispatcher.commiter4taked_screens.is_stopped():
            raise Exception('Commiter already running')
-        MDispatcher.commiter4taked_screens = MultipleQueueThread(
+        MDispatcher.commiter4taked_screens = MultipleQueueProc(
             target = MDispatcher._handler_of_taked_frames,
-            max_thread4queue = 5
+            max_thread4queue = 15
         )
         log_info('Start commiter for taked screen')
 
@@ -229,12 +233,12 @@ class MDispatcher:
             MDispatcher._new_thread_of_handler_of_taked_frames(
                 frame, cam_ip, save_dir, send_time
             )
-        # cam = CameraStream(
-        #     **cam_conf, debug=debug,
-        #     handler_of_taked_frames=handler)
+        cam = CameraStream(
+            **cam_conf, debug=debug,
+            handler_of_taked_frames=handler)
 
-        # cam.open(save_interval=interval)
-        # MDispatcher.cameras_streams[cam_conf['cam_ip']] = cam
+        cam.open(save_interval=interval)
+        MDispatcher.cameras_streams[cam_conf['cam_ip']] = cam
 
 
     @staticmethod
@@ -258,10 +262,12 @@ class MDispatcher:
     @staticmethod
     def _new_thread_of_handler_of_taked_frames(frame, cam_ip, save_dir, send_time):
         # log_info('Start Dispatcher New thread')
-        log_info(f'Send from {cam_ip}')
+        # log_info(f'Send from {cam_ip}')
+        tt = time()
         MDispatcher.commiter4taked_screens.put(
             args = (frame, cam_ip, save_dir, send_time,)
         )
+        # log_info(f'Put time: {time() - tt}')
         # log_info('End Dispatcher New thread')
 
     @staticmethod
@@ -310,16 +316,16 @@ class MDispatcher:
             "%y_%m_%d-%H_%M_%S_%f"
         )
 
-        log_info(f'\t{cur_time_str}')
-        log_info('\ttest0')
+        # log_info(f'\t{cur_time_str}')
+        # log_info('\ttest0')
         [file_dir, file_name] = cur_time_str.split('-')
-        log_info('\ttest1')
+        # log_info('\ttest1')
         
         res_path = os.path.join(
             *file_dir.split('_'),
             file_name + '.jpg'
         )
-        log_info('\ttest2')
+        # log_info('\ttest2')
 
         return res_path
 
@@ -328,26 +334,12 @@ class MDispatcher:
 ################ Video ###############
 ######################################
 ######################################
-
-    @staticmethod
-    class TimeGenerator:
-        def __init__(self, interval_ms):
-            self.interval_ms = interval_ms
-            tmp_date = date.today()
-            self._start_date = datetime(
-                tmp_date.year, tmp_date.month, tmp_date.day
-            )
-            self._counter = 0
-
-        def next(self):
-            t_delta = timedelta(minutes = self._counter * self.interval_ms / 60 / 1000)
-            self._counter += 1
-            return self._start_date + t_delta
+   
 
 # frame, cam_ip, save_dir, send_time
     @staticmethod
     def start_video(video_location, save_dir, interval_ms):
-        time_gen = MDispatcher.TimeGenerator(interval_ms)
+        time_gen = TimeGenerator(interval_ms)
 
         handler_of_taked_frames = lambda frame: \
             MDispatcher._new_thread_of_handler_of_taked_frames(

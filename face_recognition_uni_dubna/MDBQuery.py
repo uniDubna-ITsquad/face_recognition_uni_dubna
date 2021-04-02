@@ -3,6 +3,8 @@ import psycopg2 as psql
 from datetime import datetime, timezone
 import time
 from time import mktime
+import os
+import multiprocessing as mp
 
 
 log_info = lambda message : MLogs.info('MDBQuery', message)
@@ -17,35 +19,53 @@ log_error = lambda message : MLogs.error('MDBQuery', message)
 
 # register_adapter(np.ndarray, addapt_numpy_array)
 
-def connection_require(func):
+def connection_param_require(func):
     def wrapped(*args, **kwargs):
-        if not MDBQuery.conn:
+        if not MDBQuery.conn_param:
             raise Exception('Connection to database is required')
         return func(*args, **kwargs)
     return wrapped
 
 
 class MDBQuery:
+    conn_param = None
     conn = None
+    last_pid = None
 
     def __init__(self):
         raise Exception('you cannot create an object of this class')
 
     @staticmethod
     def connect2db(*, dbname, user, password, host):
-        if MDBQuery.conn:
+        try:
+            if MDBQuery.conn_param != None:
+                MDBQuery._get_conn()
+        except:
             raise Exception('Already connected')
-        conn = psql.connect(
-            dbname=dbname,
-            user=user,
-            password=password,
-            host=host
-        )
+        conn_param = {
+            'dbname': dbname,
+            'user': user,
+            'password': password,
+            'host': host
+        }
 
-        MDBQuery.conn = conn
+        with mp.Manager() as manager:
+            MDBQuery.dict_pid_conn = manager.dict()
+
+        MDBQuery.conn_param = conn_param
 
     @staticmethod
-    @connection_require
+    @connection_param_require
+    def _get_conn():
+        pid = os.getpid()
+        # print(pid)
+        if pid != MDBQuery.last_pid:
+            MDBQuery.conn = psql.connect(**MDBQuery.conn_param)
+            MDBQuery.last_pid = pid
+        return MDBQuery.conn
+
+    @staticmethod
+    @connection_param_require
     def check_version(version):
         n_version = version
         commands = []
@@ -113,11 +133,11 @@ class MDBQuery:
             n_version = 0.01
         
         try:
-            cur = MDBQuery.conn.cursor()
+            cur = MDBQuery._get_conn().cursor()
             for cmd in commands:
                 cur.execute(cmd)
             cur.close()
-            MDBQuery.conn.commit()
+            MDBQuery._get_conn().commit()
         except (Exception, psql.DatabaseError) as e:
             print('In MDBQuery check_version')
             print(e)
@@ -125,9 +145,9 @@ class MDBQuery:
         return n_version
 
     @staticmethod
-    @connection_require
+    @connection_param_require
     def insert_student_with_feature(student_name, im_path, feature_im):
-        cur = MDBQuery.conn.cursor()
+        cur = MDBQuery._get_conn().cursor()
         cur.execute(
             'INSERT INTO students_names (name) VALUES (%s)',
             [student_name]
@@ -159,18 +179,18 @@ class MDBQuery:
         )
 
         cur.close()
-        MDBQuery.conn.commit()
+        MDBQuery._get_conn().commit()
 
     
     @staticmethod
-    @connection_require
+    @connection_param_require
     def commit_screen(*, screen_path, frame_face_parameters, time = None, cam_ip = 'test'):
         if len(frame_face_parameters['locations']) != len(frame_face_parameters['features']):
             raise Exception("can't commit screen len locations != len features")
         total_faces = len(frame_face_parameters['locations'])
         date_now = time if time != None \
               else datetime.now(timezone.utc)
-        cur = MDBQuery.conn.cursor()
+        cur = MDBQuery._get_conn().cursor()
         cur.execute(
             "INSERT INTO processed_screens \
                 (camera_ip, path, date, total_face) \
@@ -198,17 +218,17 @@ class MDBQuery:
         )
         
         cur.close()
-        MDBQuery.conn.commit()
+        MDBQuery._get_conn().commit()
 
     @staticmethod
-    @connection_require
+    @connection_param_require
     def get_students_id_and_features():
         command = """\
 SELECT s.student_name_id, sf.feature
     FROM public.students_features AS sf, public.students AS s
     WHERE  sf.id = s.student_feature_id and sf.id != 404;
         """
-        cur = MDBQuery.conn.cursor()
+        cur = MDBQuery._get_conn().cursor()
         cur.execute(command)
 
         data = cur.fetchall()
@@ -220,14 +240,14 @@ SELECT s.student_name_id, sf.feature
         return {'ids': ids, 'features': features}
 
     @staticmethod
-    @connection_require
+    @connection_param_require
     def get_unprocessed_screens_faces():
         command = """\
 SELECT id, face_feature
     FROM public.screens_features
     WHERE  looks_like_student_id IS NULL;
         """
-        cur = MDBQuery.conn.cursor()
+        cur = MDBQuery._get_conn().cursor()
         cur.execute(command)
 
         data = cur.fetchall()
@@ -239,7 +259,7 @@ SELECT id, face_feature
         return {'ids': ids, 'features': features}
 
     @staticmethod
-    @connection_require
+    @connection_param_require
     def update_screens_face4match_student(screen_face_id, student_ids):
 
         student_id = student_ids[0] if len(student_ids) == 1 else 404
@@ -249,28 +269,28 @@ UPDATE public.screens_features
 	SET looks_like_student_id={student_id}
 	WHERE id={screen_face_id};
         """
-        cur = MDBQuery.conn.cursor()
+        cur = MDBQuery._get_conn().cursor()
         cur.execute(command)
-# ;
+
         cur.close()
-        MDBQuery.conn.commit()
+        MDBQuery._get_conn().commit()
 
     @staticmethod
-    @connection_require
+    @connection_param_require
     def insert_camera(cam_ip):
         command = f"""\
 INSERT INTO public.cameras (ip)
     VALUES ({cam_ip});
         """
-        cur = MDBQuery.conn.cursor()
+        cur = MDBQuery._get_conn().cursor()
         cur.execute(command)
 
         cur.close()
-        MDBQuery.conn.commit()
+        MDBQuery._get_conn().commit()
 
     
     @staticmethod
-    @connection_require
+    @connection_param_require
     def get_processed_screens_by_cam_ip(camera_ip):
 
         command = f"""\
@@ -288,7 +308,7 @@ SELECT
     ORDER BY MIN(ps.date);
         """
     
-        cur = MDBQuery.conn.cursor()
+        cur = MDBQuery._get_conn().cursor()
         cur.execute(command)
 
         data = cur.fetchall()

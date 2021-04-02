@@ -21,10 +21,10 @@ def run_fun(*, target, args = None, kwargs = None):
 
 class ThreadControllerLimitedElapsed():
         MAX_ELAPSED = 1
-        LOOP_IN_SECOND = 50
+        LOOP_IN_SECOND = 10
 
         class _Thread(Thread):
-            def __init__(self, stop_event, *args, **kwargs):
+            def __init__(self, stop_event, daemon = True, *args, **kwargs):
                 super(ThreadControllerLimitedElapsed._Thread, self).__init__(*args, **kwargs)
                 self.stop_event = stop_event
                 self.elapsed = {}
@@ -54,7 +54,7 @@ class ThreadControllerLimitedElapsed():
                 thread = self._elapsed[key]
                 del thread.elapsed[key]
                 if len(thread.elapsed) == 0:
-                    print('Destroy thread')
+                    log_info('Destroy thread ThreadControllerLimitedElapsed')
                     self._threads[thread].set()
                     del self._threads[thread]
             else:
@@ -67,9 +67,9 @@ class ThreadControllerLimitedElapsed():
             return self._get_new_thread()
         
         def _get_new_thread(self):
-            print('Start new thread')
+            log_info('Start new thread ThreadControllerLimitedElapsed')
             n_stop_event = Event()
-            n_thread = self._Thread(n_stop_event)
+            n_thread = self._Thread(n_stop_event, )
             self._threads[n_thread] = n_stop_event
             n_thread.start()
             return n_thread
@@ -86,8 +86,6 @@ class ThreadSemaphore:
         Thread(target=self._run, args=(fun, args, kwargs)).start()
 
     def _run(self, fun, args=None, kwargs=None):
-        # print('args', *args)
-        # print('kwargs', **kwargs)
         try:
             run_fun(
                 target = fun, 
@@ -161,7 +159,9 @@ class MultipleQueueThread:
     def put(self, *, args = None, kwargs = None):
         if self._stop_event.is_set():
             raise Exception('Already stopped')
+        # tt = time.time()
         self._queue.put((args, kwargs, ))
+        # log_info(f'Put tume: {time.time() - tt}')
         
     def is_stopped(self):
         return self._stop_event.is_set()

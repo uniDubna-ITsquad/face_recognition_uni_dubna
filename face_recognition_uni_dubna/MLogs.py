@@ -13,6 +13,7 @@ class MLogs:
 
     @staticmethod
     def info(message_name, message):
+        return
         identifier = 'I'
         MLogs._write_for_file(
             file_name = file_logs_info_name,
@@ -28,6 +29,7 @@ class MLogs:
 
     @staticmethod
     def error(message_name, message):
+        return
         identifier = 'E'
         MLogs._write_for_file(
             file_name = file_logs_error_name,

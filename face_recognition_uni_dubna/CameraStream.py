@@ -1,6 +1,8 @@
 from face_recognition_uni_dubna.MThreading import ThreadControllerLimitedElapsed
 from face_recognition_uni_dubna.MLogs import MLogs
-from datetime import datetime
+from face_recognition_uni_dubna.TimeGenerator import TimeGenerator
+from datetime import datetime, timedelta
+import multiprocessing as mp
 import time
 import os
 import cv2
@@ -9,6 +11,51 @@ import sys
 
 log_info = lambda message : MLogs.info('CameraStream', message)
 log_error = lambda message : MLogs.error('CameraStream', message)
+
+
+
+class DroppedRtspProc():
+    def __init__(self,rtsp_url):        
+        #load pipe for data transmittion to the process
+        self.parent_conn, child_conn = mp.Pipe()
+        self.get_event = mp.Event()
+        self.stop_event = mp.Event()
+
+        self.p = mp.Process(
+            target=self.update, 
+            args=(child_conn, self.get_event, self.stop_event, rtsp_url)
+        )        
+
+        self.is_wait4get_frame = False
+
+        self.p.daemon = False
+        self.p.start()
+
+    def update(self, conn, get_ev, stop_ev, rtsp_url):
+        cap = cv2.VideoCapture(rtsp_url,cv2.CAP_FFMPEG)   
+        
+        while True:
+            ret,frame = cap.read()
+            
+            if get_ev.is_set():
+                rec_dat = conn.send(frame)
+
+            elif stop_ev.is_set():
+                cap.release()
+                break
+
+        conn.close()
+
+    def get_frame(self,resize=None):
+        self.get_event.set()
+        frame = self.parent_conn.recv()
+        self.get_event.clear()
+
+        return frame
+
+    def stop(self):
+        self.stop_event.set()
+
 
 class CameraStream:
     _thread_controller = None
@@ -21,59 +68,51 @@ class CameraStream:
 
     def __init__(self, *, cam_ip, handler_of_taked_frames,
                 # save_dir=None,
-                auth_login='admin', auth_password='admin', debug=False):
+                auth_login = 'admin', auth_password = 'admin',
+                cam_fps = None, debug = False):
         self.cam_ip = cam_ip
         self.auth_login = auth_login
         self.auth_password = auth_password
-        # self.save_dir = save_dir
         self.is_debug = debug
         self.handler_of_taked_frames = handler_of_taked_frames
         self._is_tread_alive = False
         self.cap_cur_fps = None
 
-    def is_openable_rtsp(self):
-        res = False
-        try:
-            if not self.is_debug:
-                self._open_rtsp()
-            res = True
-        except Exception as e:
-            pass
-        if res:
-            passself._close_rtsp()
-        return res
+    # def is_openable_rtsp(self):
+    #     res = False
+    #     try:
+    #         if not self.is_debug:
+    #             self._open_rtsp()
+    #         res = True
+    #     except Exception as e:
+    #         pass
+    #     if res:
+    #         passself._close_rtsp()
+    #     return res
 
 
     def open(self, *, save_interval):
         log_info(f'Open rtsp for {self.cam_ip}')
-        if not self.is_debug:
-            self._open_rtsp()
+        self._open_rtsp()
         self._add2thread(save_interval)
         self._is_tread_alive = True
 
     def close(self):
         if not self._is_tread_alive:
             raise Exception("cannot close a stream that was not open")
-        # print(f"close {self.cam_ip}")
         self._remove_from_timer()
-        if not self.is_debug:
-            self._close_rtsp()
+        self._close_rtsp()
         log_info(f'Close rtsp for {self.cam_ip}')
-
         self._is_tread_alive = False
 
     def _open_rtsp(self):
-        # print('open')
-        self.cam_cap = cv2.VideoCapture(
+        rtsp_url = \
             f"rtsp://{self.auth_login}:{self.auth_password}@{self.cam_ip}"
-        )
-        # self.cam_cap.set(cv2.CAP_PROP_POS_AVI_RATIO,1)
-        self.cap_cur_fps = self.cam_cap.get(cv2.CAP_PROP_FPS)
-        log_info(f'FPS is: {self.cam_cap.get(cv2.CAP_PROP_FPS)}')
+        self.rtsp = DroppedRtspProc(rtsp_url)
 
     def _close_rtsp(self):
-        self.cam_cap.release()
-        del self.cam_cap
+        self.rtsp.stop()
+        del self.rtsp
 
     def _add2thread(self, save_interval):
         if type(self._thread_controller) != ThreadControllerLimitedElapsed \
@@ -90,74 +129,19 @@ class CameraStream:
             self._thread_controller = None
 
     def _get_save_handler(self, interval):
-        start_time = [int(round(time.time() * 1000))]
-        # Count of frame before invoke handler
-        frame_counter = [0]
-        def _try_save_screen():
-            # In seconds
-            cur_time = time.time()
-            diff_time = int(round(cur_time * 1000)) - start_time[0]
-            frame = None
-            if not self.is_debug:
-                ret, frame = self.cam_cap.read()
-            if type(frame) != type(None):
-                frame_counter[0] += 1
-            if not ret:
-                log_info('In ret')
-            # if diff_time > interval / 1000:
-            # if diff_time > interval:
-            if frame_counter[0] >= self.cap_cur_fps:
-                if not self.is_debug and not ret and frame == None:
-                    print("Here ----------------------------------------------\n" * 4)
-                    print(ret, frame)
-                    print("Here ----------------------------------------------\n" * 4)
-                    return _try_save_screen()
-                    return None
+        interval /= 1000
+        SKIP_FIRST_TIME = 6
+        start_time = time.time() + SKIP_FIRST_TIME
+        count = [0]
 
-                log_info(f'Start send for {self.cam_ip}')
-                log_info(f'\tUnsend frame count is {frame_counter[0]} for {self.cam_ip}')
-                start_time[0] += interval
-                frame_counter[0] = 0
+        def _try_save_screen():
+            if time.time() > start_time + interval * count[0]:
+                frame = self.rtsp.get_frame()
+                frame_time = datetime.now()
+                self.handler_of_taked_frames(frame, self.cam_ip, frame_time)
+                count[0] += 1
 
         return _try_save_screen
-    
-    def _save_screen(self, frame):
-        _path = self._get_save_file_path()
-        print(_path)
-        if not self.is_debug:
-            cv2.imwrite(_path , frame)
-
-    def _get_save_file_path(self):
-        cur_time_str = time.strftime(
-            "%y_%m_%d-%H_%M_%S",
-            time.localtime()
-        )
-        res_floder_path = None
-        if self.__dict__['save_dir']:
-            res_floder_path = os.path.join(
-                self.save_dir, self.cam_ip
-            )
-        else:
-            res_floder_path = os.path.join(
-                'media', self.cam_ip
-            )
-
-        self._check_folder_path(res_floder_path)
-
-        return os.path.join(res_floder_path, cur_time_str + '.jpg')
-
-    def _check_folder_path(self, folder_path):
-        if os.path.exists(folder_path): 
-            return
-        dirs = os.path.split(folder_path)
-        for i in range(1, len(dirs) + 1):
-            cur_folder_path = os.path.join(*dirs[:i])
-            if not os.path.exists(cur_folder_path):
-                os.mkdir(cur_folder_path)
-
-    def _get_duration_of_capture(self):
-        return int(self.cam_cap.get(cv2.CAP_PROP_POS_FRAMES)) \
-             / int(self.cam_cap.get(cv2.CAP_PROP_FPS))
 
     @staticmethod
     def check_cam_fps(*, cam_ip, auth_login='admin', auth_password='admin'):
@@ -175,13 +159,9 @@ class CameraStream:
             ret, frame = cam_cap.read()
             if not ret:
                 continue
-            # log_info(start_time + len(frame_count_by_sec) > time.time())
             if start_time + len(frame_count_by_sec) < time.time():
                 frame_count_by_sec.append(0)
             frame_count_by_sec[len(frame_count_by_sec) - 1] += 1
-            # log_info(frame_count_by_sec)
-            # log_info(start_time + len(frame_count_by_sec))
-            # log_info(time.time())
 
         cam_cap.release()
         slice4res = frame_count_by_sec[FIRST_PASS:-2]
@@ -200,9 +180,5 @@ class CameraStream:
             return False
 
         ret, frame = cam_cap.read()
-        
         cam_cap.release()
-
         return ret
-
-
