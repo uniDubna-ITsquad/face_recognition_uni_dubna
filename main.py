@@ -7,7 +7,7 @@ import os
 from tabulate import tabulate
 from time import sleep
 
-media_dir = os.path.join('media', 'test009')
+media_dir = os.path.join('media', 'public')
 
 def run_fun(*, target, args = None, kwargs = None):
     if args == None and kwargs == None:
